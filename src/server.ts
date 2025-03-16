@@ -232,6 +232,8 @@ interface ExecuteQueryRequest {
   config: DatabaseConfig;
   query: string;
   isUnsafe: boolean;
+  schema?: TableSchema[];
+  question?: string;
 }
 
 const validateQuerySafety = (isUnsafe: boolean): void => {
@@ -252,16 +254,57 @@ const executeQuery = async (pool: Pool, query: string): Promise<unknown> => {
 };
 
 const handleQueryExecution = async (req: express.Request, res: express.Response): Promise<void> => {
+  let pool;
   try {
-    const { config, query, isUnsafe } = req.body as ExecuteQueryRequest;
+    const { config, query, isUnsafe, schema, question } = req.body as ExecuteQueryRequest;
     validateQuerySafety(isUnsafe);
 
-    const pool = createDatabasePool(config);
-    const results = await executeQuery(pool, query);
-    res.json({ results });
+    pool = createDatabasePool(config);
+    await testConnection(pool);
+
+    try {
+      const results = await pool.query(query);
+      res.json({ success: true, results: results[0] });
+    } catch (queryError: unknown) {
+      if (schema && question) {
+        try {
+          const errorMessage = queryError instanceof Error ? queryError.message : 'Unknown error';
+          const regenerated = await geminiService.generateQuery(schema, question, errorMessage);
+          
+          // Execute regenerated query
+          const results = await pool.query(regenerated.sql);
+          res.json({
+            success: true,
+            results: results[0],
+            regeneratedQuery: {
+              sql: regenerated.sql,
+              explanation: regenerated.explanation
+            },
+            originalError: errorMessage
+          });
+        } catch (regenerateError: unknown) {
+          res.status(500).json({
+            success: false,
+            error: regenerateError instanceof Error ? regenerateError.message : 'Unknown error',
+            originalError: queryError instanceof Error ? queryError.message : 'Unknown error'
+          });
+        }
+      } else {
+        const status = queryError instanceof Error && queryError.message.includes('Unsafe queries') ? 403 : 500;
+        res.status(status).json({
+          success: false,
+          error: queryError instanceof Error ? queryError.message : 'Unknown error'
+        });
+      }
+    }
   } catch (error: unknown) {
     const status = error instanceof Error && error.message.includes('Unsafe queries') ? 403 : 500;
-    res.status(status).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+    res.status(status).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  } finally {
+    if (pool) await pool.end();
   }
 };
 

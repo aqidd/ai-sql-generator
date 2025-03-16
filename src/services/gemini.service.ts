@@ -177,11 +177,18 @@ ${rules}`;
     }
   }
 
-  public async generateQuery(schema: TableSchema[], question: string): Promise<QueryResult> {
+  public async generateQuery(
+    schema: TableSchema[],
+    question: string,
+    errorMessage?: string
+  ): Promise<QueryResult> {
     this.validateServiceState();
 
     try {
-      const prompt = this.generatePrompt(schema, question);
+      const prompt = errorMessage
+        ? this.generateErrorFixPrompt(schema, question, errorMessage)
+        : this.generatePrompt(schema, question);
+
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);
       queryResult.isUnsafe ||= this.checkUnsafeOperations(queryResult.sql);
@@ -189,5 +196,29 @@ ${rules}`;
     } catch (error) {
       throw new Error(`Failed to generate SQL query: ${(error as Error).message}`);
     }
+  }
+
+  private generateErrorFixPrompt(schema: TableSchema[], question: string, errorMessage: string): string {
+    const schemaInfo = schema.map(this.formatTableSchema).join('\n');
+    return `You are a MySQL expert. Given the following database schema and user question, 
+    generate a corrected SQL query that fixes the error from a previous attempt.
+
+    Database Schema:
+    ${schemaInfo}
+
+    User Question: ${question}
+
+    Previous Error: ${errorMessage}
+
+    Please generate a valid SQL query that:
+    1. Fixes the error from the previous attempt
+    2. Correctly answers the user's question
+    3. Uses only the tables and columns defined in the schema
+    4. Returns the most relevant data
+
+    Respond with a JSON object containing:
+    - sql: The corrected SQL query
+    - explanation: A brief explanation of what the query does and how it fixes the error
+    - isUnsafe: true if the query modifies data (UPDATE, DELETE, etc.)`;
   }
 }

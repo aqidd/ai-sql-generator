@@ -211,7 +211,52 @@ Changes made:
                             </div>
 
                             <!-- Query Results -->
+                            <!-- Query Error with Regeneration -->
+                            <div v-if="queryError" class="mt-4 bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                                <div class="flex items-start">
+                                    <div class="flex-shrink-0">
+                                        <i data-lucide="alert-triangle" class="w-5 h-5 text-yellow-500"></i>
+                                    </div>
+                                    <div class="ml-3 flex-1">
+                                        <h3 class="text-sm font-medium text-yellow-800">Query Error</h3>
+                                        <div class="mt-1 text-sm text-yellow-700">{{ queryError }}</div>
+                                        <div class="mt-3 flex items-center gap-4">
+                                            <button 
+                                                @click="regenerateQuery" 
+                                                class="inline-flex items-center px-3 py-1.5 border border-yellow-600 rounded-md text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
+                                                :disabled="loading">
+                                                <i data-lucide="refresh-cw" class="w-4 h-4 mr-1.5"></i>
+                                                Regenerate Query
+                                            </button>
+                                            <button 
+                                                @click="queryError = null" 
+                                                class="text-sm text-yellow-600 hover:text-yellow-800">
+                                                Dismiss
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Query Results -->
                             <div v-if="queryResults" class="mt-4">
+                                <div v-if="regeneratedQuery" class="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4">
+                                    <div class="flex">
+                                        <div class="flex-shrink-0">
+                                            <i data-lucide="check-circle" class="w-5 h-5 text-blue-500"></i>
+                                        </div>
+                                        <div class="ml-3">
+                                            <h3 class="text-sm font-medium text-blue-800">Query Regenerated Successfully</h3>
+                                            <div class="mt-2 text-sm text-blue-700">
+                                                <p class="font-medium">New Query:</p>
+                                                <pre class="mt-1 p-2 bg-blue-100 rounded">{{ regeneratedQuery.sql }}</pre>
+                                                <p class="mt-2 font-medium">Explanation:</p>
+                                                <p class="mt-1">{{ regeneratedQuery.explanation }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <h3 class="text-lg font-medium text-gray-900 mb-2">Results</h3>
                                 <div class="overflow-x-auto">
                                     <table v-if="Array.isArray(queryResults)" class="min-w-full divide-y divide-gray-200">
@@ -318,6 +363,8 @@ Changes made:
                 const executionLoading = ref(false)
                 const generatedQuery = ref(null)
                 const queryResults = ref(null)
+                const queryError = ref(null)
+                const regeneratedQuery = ref(null)
 
                 const connectToDatabase = async () => {
                     error.value = ''
@@ -408,7 +455,8 @@ Changes made:
                     if (!generatedQuery.value) return;
                     
                     executionLoading.value = true;
-                    error.value = '';
+                    queryError.value = null;
+                    regeneratedQuery.value = null;
                     queryResults.value = null;
                     
                     try {
@@ -428,22 +476,30 @@ Changes made:
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
+                                config,
                                 query: generatedQuery.value.sql,
                                 isUnsafe: generatedQuery.value.isUnsafe,
-                                config
+                                schema: schema.value,
+                                question: question.value
                             })
                         });
 
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || 'Failed to execute query');
+                        const data = await response.json();
+                        if (!data.success) {
+                            queryError.value = data.error;
+                            return;
                         }
 
-                        const { results } = await response.json();
-                        queryResults.value = results;
+                        queryResults.value = data.results;
+                        if (data.regeneratedQuery) {
+                            regeneratedQuery.value = data.regeneratedQuery;
+                            generatedQuery.value = {
+                                ...generatedQuery.value,
+                                sql: data.regeneratedQuery.sql
+                            };
+                        }
                     } catch (e) {
-                        error.value = e.message;
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        queryError.value = e.message;
                     } finally {
                         executionLoading.value = false;
                     }
@@ -470,6 +526,39 @@ Changes made:
                     }
                 }
 
+                const regenerateQuery = async () => {
+                    if (!question.value || !schema.value.length) return;
+                    
+                    queryLoading.value = true;
+                    queryError.value = null;
+                    regeneratedQuery.value = null;
+                    
+                    try {
+                        const response = await fetch('/api/generate-query', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                schema: schema.value,
+                                question: question.value
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Failed to regenerate query');
+                        }
+
+                        generatedQuery.value = data;
+                        await executeQuery();
+                    } catch (e) {
+                        queryError.value = e.message;
+                    } finally {
+                        queryLoading.value = false;
+                    }
+                };
+
                 return {
                     connectionType,
                     standardConfig,
@@ -483,6 +572,8 @@ Changes made:
                     executionLoading,
                     generatedQuery,
                     queryResults,
+                    queryError,
+                    regeneratedQuery,
                     connectToDatabase,
                     disconnect,
                     getDatabaseName,
