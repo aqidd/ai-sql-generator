@@ -1,104 +1,105 @@
 <!--
 Changes made:
-2025-03-16: Created initial README with project overview, features, setup instructions, and technical details
+2025-03-16: Created README with project overview, features, setup instructions, and technical details
+2025-03-16: Made content database-focused, improved error handling docs, enhanced technical stack details
 -->
 
-# WordPress Database AI Query Assistant 🤖
+# Database AI Query Assistant 🤖
 
-A powerful tool that helps you explore and query your WordPress database using natural language. Simply ask questions in plain English, and let the AI generate optimized SQL queries for you. Built with Express, TypeScript, Vue.js, and Google's Gemini AI.
-
+A powerful tool that helps you explore and query your MySQL database using natural language. Simply ask questions in plain English, and let the AI generate optimized SQL queries for you. Built with Express, TypeScript, Vue.js, and Google's Gemini AI.
 ![MySQL AI Query Assistant](public/wp-ai-query.png)
 
 ## ✨ Features
 
-- **Natural Language Queries**: Convert plain English questions into optimized SQL queries
-- **Schema Visualization**: View your database structure in a clean, organized format
-- **Smart Query Generation**: AI-powered SQL generation with safety checks
-- **Dual Connection Methods**: Support for both standard connection parameters and connection strings
-- **Safety First**: Built-in protection against unsafe operations (UPDATE/DELETE)
-- **Modern UI**: Clean, responsive interface with loading states and error handling
-- **Real-time Results**: Instant query execution and result display
+- **Natural Language to SQL**: Convert English questions into optimized SQL queries
+- **Smart Error Handling**: AI-powered query regeneration when errors occur
+- **Schema Visualization**: Clean, organized view of your database structure
+- **Query Generation**: AI-powered SQL generation with safety checks
+- **Flexible Connection**: Support for both standard parameters and connection strings
+- **Safety Controls**: Built-in protection against unsafe operations (UPDATE/DELETE)
+- **Modern UI/UX**: Beautiful, responsive interface with Tailwind CSS
+- **Real-time Results**: Instant query execution with error recovery
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - Node.js >= 14
-- MySQL database
+- MySQL database (any version)
 - Google Gemini API key
 
 ### Installation
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/mysql-ai-query-assistant.git
-cd mysql-ai-query-assistant
-```
+1. Clone the repository
 
 2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Create a `.env` file:
+3. Set up environment:
 ```bash
 cp .env.example .env
 ```
 
-4. Configure your environment variables in `.env`:
-```
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=your_database
-
-# Gemini API Configuration
+4. Configure your `.env`:
+```env
+# API Configuration
+PORT=3001
 GEMINI_API_KEY=your_gemini_api_key
 
-# Security
+# Security Settings
 ALLOW_UNSAFE_QUERIES=false
 ```
 
-5. Start the development server:
+5. Start the server:
 ```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
+6. Open [http://localhost:3001](http://localhost:3001)
 
 ## 💡 Usage
 
-1. **Connect to Database**:
-   - Standard connection: Enter host, port, user, password, and database
-   - Connection string: Paste your MySQL connection URL
-   - Real-time validation and error feedback
+1. **Database Connection**:
+   - Use standard parameters (host, port, credentials)
+   - Or paste a MySQL connection string
+   - Real-time validation with error feedback
+   - Secure credential handling
 
-2. **View Schema**:
-   - Clean, organized display of database structure
-   - Tables with columns, types, and key information
-   - Beautiful UI with proper spacing and typography
+2. **Schema Explorer**:
+   - Visual database structure overview
+   - Detailed table and column information
+   - Type, key, and constraint details
+   - Clean, organized layout
 
-3. **Generate Queries**:
-   - Ask questions in natural language
-   - AI generates optimized SQL with explanations
-   - Review query safety and potential impacts
-   - See results in a well-formatted table
+3. **AI Query Generation**:
+   - Ask questions in plain English
+   - Get optimized SQL with explanations
+   - Automatic query regeneration on errors
+   - Safety checks and validations
 
-4. **Safety Features**:
-   - Protection against UPDATE/DELETE operations
-   - Clear warnings for data-modifying queries
-   - Environment-based safety controls
-   - Input validation and error handling
+4. **Smart Error Handling**:
+   - AI-powered query correction
+   - Clear error explanations
+   - One-click query regeneration
+   - Safe query execution
 
-## 🛠️ Technical Details
+## 🛠️ Technical Stack
+
+### Core Technologies
+- **Frontend**: Vue.js with Tailwind CSS
+- **Backend**: Express with TypeScript
+- **AI**: Google's Gemini for natural language processing
+- **Database**: MySQL compatibility
 
 ### Design Principles
-- Code readability over premature optimization
-- Component-based architecture (max 300 lines per component)
+- Beautiful, production-ready UI/UX
+- Component-based (max 300 lines)
 - Single responsibility functions (max 20 lines)
-- Type safety with TypeScript throughout
+- Type safety with TypeScript
+- Error recovery and regeneration
+- Clean, maintainable code
 
 ### Backend
 - Express.js with TypeScript

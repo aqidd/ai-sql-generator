@@ -1,7 +1,7 @@
 {
-  "name": "wordpress-ai-assistant",
+  "name": "database-ai-assistant",
   "version": "1.0.0",
-  "description": "AI-powered WordPress database query assistant with natural language support",
+  "description": "AI-powered MySQL database query assistant with natural language support and error recovery",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
