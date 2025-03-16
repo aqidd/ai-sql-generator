@@ -1,0 +1,22 @@
+{
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "rules": {
+    "@typescript-eslint/explicit-function-return-type": "error",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": "error",
+    "max-len": ["error", { "code": 100 }],
+    "max-lines-per-function": ["error", { "max": 20 }],
+    "max-lines": ["error", { "max": 300, "skipBlankLines": true }],
+    "complexity": ["error", { "max": 10 }],
+    "no-console": "warn"
+  },
+  "env": {
+    "node": true,
+    "es6": true
+  }
+}
