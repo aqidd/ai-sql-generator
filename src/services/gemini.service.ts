@@ -1,3 +1,4 @@
+/* eslint-disable max-lines-per-function */
 /**
  * Changes made:
  * 2025-03-16: Created Gemini service for SQL query generation
@@ -111,17 +112,21 @@ RULES:
 5. Valid SQL syntax`;
   }
 
-  private generatePrompt(schema: TableSchema[], question: string): string {
+  private generatePrompt(schema: TableSchema[], question: string, referenceText?: string): string {
     this.validateInputs(schema, question);
     const schemaInfo = schema.map(this.formatTableSchema).join('\n');
     const rules = this.getPromptRules();
+
+    const referenceContext = referenceText 
+        ? `REFERENCE DOCUMENT:\n${referenceText}\n\n`
+        : '';
 
     return `You are a SQL query generator. Return ONLY a valid JSON object.
 
 SCHEMA:
 ${schemaInfo}
 
-QUESTION:
+${referenceContext}QUESTION:
 ${question}
 
 ${rules}`;
@@ -180,14 +185,15 @@ ${rules}`;
   public async generateQuery(
     schema: TableSchema[],
     question: string,
-    errorMessage?: string
+    errorMessage?: string,
+    referenceText?: string
   ): Promise<QueryResult> {
     this.validateServiceState();
 
     try {
       const prompt = errorMessage
         ? this.generateErrorFixPrompt(schema, question, errorMessage)
-        : this.generatePrompt(schema, question);
+        : this.generatePrompt(schema, question, referenceText);
 
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);
@@ -198,7 +204,11 @@ ${rules}`;
     }
   }
 
-  private generateErrorFixPrompt(schema: TableSchema[], question: string, errorMessage: string): string {
+  private generateErrorFixPrompt(
+    schema: TableSchema[],
+    question: string,
+    errorMessage: string
+  ): string {
     const schemaInfo = schema.map(this.formatTableSchema).join('\n');
     return `You are a MySQL expert. Given the following database schema and user question, 
     generate a corrected SQL query that fixes the error from a previous attempt.

@@ -145,6 +145,18 @@ Changes made:
                         AI Query Assistant
                     </h2>
                     <div class="space-y-4">
+                        <!-- Upload Reference Document -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Upload Reference Document</label>
+                            <input 
+                                type="file" 
+                                @change="uploadReferenceDocument" 
+                                accept=".txt,.pdf,.docx"
+                                class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            />
+                        </div>
+                    </div>
+                    <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Ask a question about your data</label>
                             <textarea 
@@ -559,6 +571,30 @@ Changes made:
                     }
                 };
 
+                const uploadReferenceDocument = async (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        const response = await fetch('/api/upload-document', {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to upload document');
+                        }
+
+                        const data = await response.json();
+                        alert('Document uploaded successfully');
+                    } catch (error) {
+                        alert(error.message);
+                    }
+                };
+
                 return {
                     connectionType,
                     standardConfig,
@@ -578,7 +614,8 @@ Changes made:
                     disconnect,
                     getDatabaseName,
                     generateQuery,
-                    executeQuery
+                    executeQuery,
+                    uploadReferenceDocument
                 }
             }
         }).mount('#app')

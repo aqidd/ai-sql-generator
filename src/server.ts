@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 /**
  * Changes made:
  * 2025-03-16: Initial setup with MySQL connection and schema retrieval
@@ -6,10 +7,23 @@
  */
 
 import express from 'express';
+
+// Extend the Request interface to include the 'file' property
+import multer from 'multer';
+type MulterFile = Express.Multer.File;
+
+declare module 'express-serve-static-core' {
+  interface Request {
+    file?: MulterFile;
+  }
+}
 import { createPool, RowDataPacket } from 'mysql2/promise';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GeminiService } from './services/gemini.service';
+import winston from 'winston';
+import { extractTextFromFile } from './utils/document-processor'; // Utility for text extraction
+import fs from 'fs';
 
 dotenv.config();
 
@@ -21,9 +35,6 @@ if (!process.env.GEMINI_API_KEY) {
   throw new Error('GEMINI_API_KEY is required in .env file');
 }
 const geminiService = new GeminiService(process.env.GEMINI_API_KEY);
-
-// Request size limits
-const MAX_PAYLOAD_SIZE = '50mb';
 
 // Database configuration types
 type DatabaseConfig = StandardConfig | ConnectionStringConfig;
@@ -82,20 +93,20 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Endpoint to get database schema
 import { Pool, PoolOptions } from 'mysql2/promise';
 
-const createDatabasePool = (config: DatabaseConfig): Pool => {
-  const baseConfig: PoolOptions = {
-    connectTimeout: 10000,
-    waitForConnections: true,
-    connectionLimit: 10,
-    maxIdle: 10,
-    idleTimeout: 60000,
-    queueLimit: 0,
-  };
+const createBasePoolConfig = (): PoolOptions => ({
+  connectTimeout: 10000,
+  waitForConnections: true,
+  connectionLimit: 10,
+  maxIdle: 10,
+  idleTimeout: 60000,
+  queueLimit: 0,
+});
 
-  if (config.type === 'connection-string') {
-    return createPool(config.url);
-  }
+const createConnectionStringPool = (url: string): Pool => {
+  return createPool(url);
+};
 
+const createStandardPool = (config: StandardConfig, baseConfig: PoolOptions): Pool => {
   const poolConfig: PoolOptions = {
     ...baseConfig,
     host: config.host,
@@ -104,8 +115,17 @@ const createDatabasePool = (config: DatabaseConfig): Pool => {
     password: config.password,
     database: config.database,
   };
-
   return createPool(poolConfig);
+};
+
+const createDatabasePool = (config: DatabaseConfig): Pool => {
+  const baseConfig = createBasePoolConfig();
+
+  if (config.type === 'connection-string') {
+    return createConnectionStringPool(config.url);
+  }
+
+  return createStandardPool(config, baseConfig);
 };
 
 const testConnection = async (pool: Pool): Promise<void> => {
@@ -124,7 +144,11 @@ const getDatabaseName = (config: DatabaseConfig): string => {
     : config.database;
 };
 
-const getTableColumns = async (pool: Pool, dbName: string, tableName: string): Promise<ColumnInfo[]> => {
+const getTableColumns = async (
+  pool: Pool, 
+  dbName: string, 
+  tableName: string
+): Promise<ColumnInfo[]> => {
   const [columns] = await pool.query<RowDataPacket[]>(
     `SELECT 
       COLUMN_NAME as name,
@@ -148,7 +172,11 @@ const getTables = async (pool: Pool, dbName: string): Promise<string[]> => {
   return tables.map((t: RowDataPacket) => t.TABLE_NAME);
 };
 
-const buildSchema = async (pool: Pool, dbName: string, tables: string[]): Promise<TableSchema[]> => {
+const buildSchema = async (
+  pool: Pool, 
+  dbName: string, 
+  tables: string[]
+): Promise<TableSchema[]> => {
   const schema: TableSchema[] = [];
   for (const tableName of tables) {
     const columns = await getTableColumns(pool, dbName, tableName);
@@ -172,22 +200,24 @@ const handleDatabaseError = (error: Error, res: express.Response): void => {
   }
 };
 
-interface DatabaseResponse {
-  error?: string;
-  schema?: TableSchema[];
-}
 
-const handleSchemaRequest = async (req: express.Request, res: express.Response): Promise<void> => {
+const processSchemaRequest = async (config: DatabaseConfig): Promise<TableSchema[]> => {
+  const pool = createDatabasePool(config);
   try {
-    const config = req.body as DatabaseConfig;
-    const pool = createDatabasePool(config);
-    
     await testConnection(pool);
     const dbName = getDatabaseName(config);
     const tables = await getTables(pool, dbName);
     const schema = await buildSchema(pool, dbName, tables);
-    
+    return schema;
+  } finally {
     await pool.end();
+  }
+};
+
+const handleSchemaRequest = async (req: express.Request, res: express.Response): Promise<void> => {
+  try {
+    const config = req.body as DatabaseConfig;
+    const schema = await processSchemaRequest(config);
     res.json({ schema });
   } catch (error) {
     handleDatabaseError(error as Error, res);
@@ -209,7 +239,10 @@ const validateQueryRequest = (req: QueryRequest): void => {
   }
 };
 
-const handleQueryGeneration = async (req: express.Request, res: express.Response): Promise<void> => {
+const handleQueryGeneration = async (
+  req: express.Request, 
+  res: express.Response
+): Promise<void> => {
   try {
     const queryRequest = req.body as QueryRequest;
     validateQueryRequest(queryRequest);
@@ -239,17 +272,9 @@ interface ExecuteQueryRequest {
 const validateQuerySafety = (isUnsafe: boolean): void => {
   if (isUnsafe && process.env.ALLOW_UNSAFE_QUERIES !== 'true') {
     throw new Error(
-      'Unsafe queries (UPDATE/DELETE) are not allowed. Update ALLOW_UNSAFE_QUERIES in .env to enable.'
+      'Unsafe queries (UPDATE/DELETE) are not allowed. Update ALLOW_UNSAFE_QUERIES ' +
+      'in .env to enable.'
     );
-  }
-};
-
-const executeQuery = async (pool: Pool, query: string): Promise<unknown> => {
-  try {
-    const [results] = await pool.query(query);
-    return results;
-  } finally {
-    await pool.end();
   }
 };
 
@@ -259,61 +284,191 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
     const { config, query, isUnsafe, schema, question } = req.body as ExecuteQueryRequest;
     validateQuerySafety(isUnsafe);
 
-    pool = createDatabasePool(config);
-    await testConnection(pool);
-
-    try {
-      const results = await pool.query(query);
-      res.json({ success: true, results: results[0] });
-    } catch (queryError: unknown) {
-      if (schema && question) {
-        try {
-          const errorMessage = queryError instanceof Error ? queryError.message : 'Unknown error';
-          const regenerated = await geminiService.generateQuery(schema, question, errorMessage);
-          
-          // Execute regenerated query
-          const results = await pool.query(regenerated.sql);
-          res.json({
-            success: true,
-            results: results[0],
-            regeneratedQuery: {
-              sql: regenerated.sql,
-              explanation: regenerated.explanation
-            },
-            originalError: errorMessage
-          });
-        } catch (regenerateError: unknown) {
-          res.status(500).json({
-            success: false,
-            error: regenerateError instanceof Error ? regenerateError.message : 'Unknown error',
-            originalError: queryError instanceof Error ? queryError.message : 'Unknown error'
-          });
-        }
-      } else {
-        const status = queryError instanceof Error && queryError.message.includes('Unsafe queries') ? 403 : 500;
-        res.status(status).json({
-          success: false,
-          error: queryError instanceof Error ? queryError.message : 'Unknown error'
-        });
-      }
-    }
+    pool = await initializeDatabasePool(config);
+    await executeQuery(pool, query, schema, question, res);
   } catch (error: unknown) {
-    const status = error instanceof Error && error.message.includes('Unsafe queries') ? 403 : 500;
-    res.status(status).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
+    handleExecutionError(error, res);
   } finally {
     if (pool) await pool.end();
   }
 };
 
+const executeQuery = async (
+  pool: Pool,
+  query: string,
+  schema: TableSchema[] | undefined,
+  question: string | undefined,
+  res: express.Response
+): Promise<void> => {
+  await executeQueryWithHandling(pool, query, schema, question, res);
+};
+
+
+const initializeDatabasePool = async (config: DatabaseConfig): Promise<Pool> => {
+  const pool = createDatabasePool(config);
+  await testConnection(pool);
+  return pool;
+};
+
+const executeQueryWithHandling = async (
+  pool: Pool,
+  query: string,
+  schema: TableSchema[] | undefined,
+  question: string | undefined,
+  res: express.Response
+): Promise<void> => {
+  try {
+    const results = await pool.query(query);
+    res.json({ success: true, results: results[0] });
+  } catch (queryError: unknown) {
+    if (schema && question) {
+      await handleQueryRegeneration(pool, queryError, schema, question, res);
+    } else {
+      handleQueryError(queryError, res);
+    }
+  }
+};
+
+const handleQueryRegeneration = async (
+  pool: Pool,
+  queryError: unknown,
+  schema: TableSchema[],
+  question: string,
+  res: express.Response
+): Promise<void> => {
+  const errorMessage = extractErrorMessage(queryError);
+  try {
+    const regenerated = await regenerateQuery(schema, question, errorMessage);
+    await executeRegeneratedQuery(pool, regenerated, errorMessage, res);
+  } catch (regenerateError: unknown) {
+    handleRegenerationError(regenerateError, queryError, res);
+  }
+};
+
+const extractErrorMessage = (queryError: unknown): string => {
+  return queryError instanceof Error ? queryError.message : 'Unknown error';
+};
+
+const regenerateQuery = async (
+  schema: TableSchema[],
+  question: string,
+  errorMessage: string
+): Promise<{ sql: string; explanation: string }> => {
+  return geminiService.generateQuery(schema, question, errorMessage);
+};
+
+const executeRegeneratedQuery = async (
+  pool: Pool,
+  regenerated: { sql: string; explanation: string },
+  errorMessage: string,
+  res: express.Response
+): Promise<void> => {
+  const results = await pool.query(regenerated.sql);
+  res.json({
+    success: true,
+    results: results[0],
+    regeneratedQuery: {
+      sql: regenerated.sql,
+      explanation: regenerated.explanation,
+    },
+    originalError: errorMessage,
+  });
+};
+
+const handleRegenerationError = (
+  regenerateError: unknown,
+  queryError: unknown,
+  res: express.Response
+): void => {
+  res.status(500).json({
+    success: false,
+    error: regenerateError instanceof Error ? regenerateError.message : 'Unknown error',
+    originalError: queryError instanceof Error ? queryError.message : 'Unknown error',
+  });
+};
+
+const handleQueryError = (queryError: unknown, res: express.Response): void => {
+  const status =
+    queryError instanceof Error && queryError.message.includes('Unsafe queries') ? 403 : 500;
+  res.status(status).json({
+    success: false,
+    error: queryError instanceof Error ? queryError.message : 'Unknown error',
+  });
+};
+
+const handleExecutionError = (error: unknown, res: express.Response): void => {
+  const status =
+    error instanceof Error && error.message.includes('Unsafe queries') ? 403 : 500;
+  res.status(status).json({
+    success: false,
+    error: error instanceof Error ? error.message : 'Unknown error',
+  });
+};
+
 app.post('/api/execute-query', handleQueryExecution);
+
+const upload = multer({ dest: 'uploads/' });
+
+// eslint-disable-next-line max-lines-per-function
+app.post('/api/upload-document', upload.single('file'), async (req, res) => {
+    try {
+        logger.info('Starting file upload processing');
+
+        if (!req.file) {
+            logger.info('No file uploaded');
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        logger.info('File uploaded successfully, validating file type');
+
+        // Validate file type
+        const allowedMimeTypes = ['application/pdf', 'text/plain', 
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!allowedMimeTypes.includes(req.file.mimetype)) {
+            logger.info('Unsupported file type error:', req.file.mimetype);
+            return res.status(400).json({ error: 'Unsupported file type' });
+        }
+
+        logger.info('File type validated successfully, extracting text from file');
+
+        // Rename file to keep the original extension
+        const fileExtension = path.extname(req.file.originalname);
+        const newFilePath = `${req.file.path}${fileExtension}`;
+        fs.renameSync(req.file.path, newFilePath);
+
+        const text = await extractTextFromFile(newFilePath);
+
+        logger.info('Text extracted successfully, storing reference text in app locals');
+        logger.info(text)
+        req.app.locals.referenceText = text;
+
+        logger.info('File upload processing completed successfully');
+        res.json({ success: true, message: 'Document processed successfully' });
+    } catch (error) {
+      logger.info(JSON.stringify(error)); 
+        if (error instanceof Error) {
+            res.status((error as any).status || 520).json({ 
+                error: error.message 
+            });
+        } else {
+            res.status(500).json({ 
+                error: 'Server error' 
+            });
+        }
+    }
+});
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.Console(),
+  ],
+});
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  logger.info(`Server is running on port ${port}`);
 });
