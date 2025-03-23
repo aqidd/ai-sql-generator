@@ -1,0 +1,319 @@
+1. Introduction
+
+1.1 Purpose: This document describes the core business processes for TuneStream, a music streaming service.
+
+1.2 Scope: Covers key areas including user management, content acquisition, content management, playback, subscription management, and content recommendation.
+
+1.3 Audience: Intended for TuneStream's management, developers, operations team, and marketing team.
+
+2. Core Business Processes
+
+2.1 User Management
+
+2.1.1 User Registration:
+
+Process: New users create accounts using email, social logins, or phone number.
+
+Activities:
+
+User provides information (email, password, username).
+
+System validates data (email format, password strength).
+
+System checks for duplicate accounts.
+
+System creates user profile in the database.
+
+System sends welcome email (optional).
+
+Actors: User, Authentication System.
+
+2.1.2 User Login/Authentication:
+
+Process: Users log in to their accounts.
+
+Activities:
+
+User enters credentials (email/username, password).
+
+System verifies credentials against the database.
+
+System generates session token/cookie.
+
+System redirects user to the main application.
+
+Actors: User, Authentication System.
+
+2.1.3 Profile Management:
+
+Process: Users update their profile information.
+
+Activities:
+
+User accesses profile settings.
+
+User edits profile fields (name, profile picture, preferences).
+
+System validates data.
+
+System updates the user profile in the database.
+
+Actors: User, Profile Management System.
+
+2.1.4 Account Recovery:
+
+Process: Users recover their accounts if they forget their passwords.
+
+Activities:
+
+User initiates password reset.
+
+System sends password reset link/code to the user's email.
+
+User clicks on the link/enters the code.
+
+User creates a new password.
+
+System updates the password in the database.
+
+Actors: User, Password Reset System.
+
+2.1.5 Subscription Management:
+
+Process: Users upgrade, downgrade, or cancel subscriptions
+
+Activities:
+
+User access subscription information
+
+User selects subscription plan
+
+System proccess payment
+
+System updates user account with subscription plan.
+
+Actors: User, Payment system, Subscription management system
+
+2.2 Content Acquisition
+
+2.2.1 Licensing and Rights Management:
+
+Process: TuneStream obtains licenses to stream music from rights holders (record labels, publishers, artists).
+
+Activities:
+
+Negotiate licensing agreements.
+
+Track licensing terms (territories, usage rights, royalties).
+
+Ensure compliance with licensing agreements.
+
+Actors: Legal Team, Content Acquisition Team.
+
+2.2.2 Content Ingestion:
+
+Process: Music content is uploaded and processed into TuneStream's system.
+
+Activities:
+
+Receive music files (audio, metadata, album art).
+
+Transcode music into various formats (MP3, AAC, etc.) for streaming.
+
+Upload music to content delivery network (CDN).
+
+Store metadata in the database.
+
+Actors: Content Management Team, Data Engineers.
+
+2.3 Content Management
+
+2.3.1 Metadata Management:
+
+Process: Maintaining accurate and complete metadata for all music content.
+
+Activities:
+
+Enter and verify metadata (artist, album, track title, genre, release date, etc.).
+
+Create relationships between artists, albums, and tracks.
+
+Ensure data quality and consistency.
+
+Actors: Content Management Team, Data Entry Specialists.
+
+2.3.2 Content Curation:
+
+Process: Creating playlists, featured content, and other curated experiences.
+
+Activities:
+
+Create playlists based on genre, mood, or theme.
+
+Feature new releases and popular tracks.
+
+Manage artist profiles.
+
+Actors: Content Curators, Editorial Team.
+
+2.4 Playback
+
+2.4.1 Streaming Music:
+
+Process: Users listen to music through the TuneStream application.
+
+Activities:
+
+User searches for or selects a song/album/playlist.
+
+System authenticates the user.
+
+System retrieves the music file from the CDN.
+
+System streams the music to the user's device.
+
+Actors: User, Streaming Server, CDN.
+
+2.4.2 Offline Playback:
+
+Process: Subscribers download music for offline listening (if enabled).
+
+Activities:
+
+User downloads a song/album/playlist.
+
+System encrypts the downloaded content.
+
+System stores the encrypted content on the user's device.
+
+Application plays the downloaded content when offline.
+
+Actors: User, Application, Download Manager.
+
+2.5 Subscription Management
+
+2.5.1 Plan Management:
+
+Process: Defining and managing subscription plans.
+
+Activities:
+
+Define different subscription tiers (e.g., free, premium).
+
+Set prices and features for each tier.
+
+Manage promotional offers.
+
+Actors: Product Management, Marketing.
+
+2.5.2 Payment Processing:
+
+Process: Handling subscription payments.
+
+Activities:
+
+Integrate with payment gateways (Stripe, PayPal).
+
+Process credit card payments.
+
+Manage recurring billing.
+
+Handle payment failures and refunds.
+
+Actors: Payment Gateway, Finance Team.
+
+2.5.3 Subscription Renewal/Cancellation:
+
+Process: Managing subscription renewals and cancellations.
+
+Activities:
+
+Automatically renew subscriptions.
+
+Notify users about upcoming renewals.
+
+Process cancellation requests.
+
+Adjust user access based on subscription status.
+
+Actors: Subscription Management System, User.
+
+2.6 Content Recommendation
+
+2.6.1 Data Collection:
+
+Process: Gathering data about user listening habits.
+
+Activities:
+
+Track songs listened to, playlists created, artists followed.
+
+Collect user demographics (age, location).
+
+Analyze user behavior.
+
+Actors: Recommendation Engine, Data Analytics Team.
+
+2.6.2 Recommendation Generation:
+
+Process: Generating personalized music recommendations.
+
+Activities:
+
+Use algorithms to identify similar users and songs.
+
+Generate playlists of recommended songs.
+
+Surface recommendations in the application.
+
+Actors: Recommendation Engine, Data Scientists.
+
+3. Key Performance Indicators (KPIs)
+
+Number of registered users
+
+Number of active users (daily, weekly, monthly)
+
+Subscription conversion rate
+
+Churn rate (subscription cancellations)
+
+Average revenue per user (ARPU)
+
+Customer acquisition cost (CAC)
+
+Listening time per user
+
+Number of songs listened to per user
+
+Playlist creation rate
+
+Content licensing costs
+
+User satisfaction (measured through surveys or app store ratings)
+
+4. Technology Stack (Example)
+
+Frontend: React, Angular, Vue.js (web) / Swift, Kotlin (mobile)
+
+Backend: Node.js, Python (Django/Flask), Java (Spring Boot)
+
+Database: PostgreSQL, MySQL, MongoDB
+
+CDN: Amazon CloudFront, Akamai, Cloudflare
+
+Payment Gateway: Stripe, PayPal
+
+Streaming Server: Icecast, SHOUTcast (or a cloud-based solution like AWS Media Services)
+
+Recommendation Engine: Custom built (using machine learning) or a third-party service.
+
+5. Future Considerations
+
+Live music streaming
+
+Podcasts
+
+Social features (following artists, sharing playlists)
+
+Integration with other platforms (e.g., smart speakers, cars)

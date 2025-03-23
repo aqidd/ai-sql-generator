@@ -6,6 +6,7 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { log } from 'winston';
 
 interface QueryResult {
   sql: string;
@@ -120,16 +121,22 @@ RULES:
     const referenceContext = referenceText 
         ? `REFERENCE DOCUMENT:\n${referenceText}\n\n`
         : '';
+    log('info', `Generating reference for question: ${referenceContext  }`);
 
-    return `You are a SQL query generator. Return ONLY a valid JSON object.
+    return `You are a Data Analyst with MySQL expertise.
+    Given the following database schema and user question, 
+    generate an SQL query that answers user's question. 
+    Read reference document for additional context.
+    Return ONLY a valid JSON object.
 
-SCHEMA:
-${schemaInfo}
+    Database Schema:
+    ${schemaInfo}
 
-${referenceContext}QUESTION:
-${question}
+    ${referenceContext}
 
-${rules}`;
+    User Question: ${question}
+
+    ${rules}`;
   }
 
   private async generateContent(prompt: string): Promise<string> {
@@ -194,6 +201,7 @@ ${rules}`;
       const prompt = errorMessage
         ? this.generateErrorFixPrompt(schema, question, errorMessage)
         : this.generatePrompt(schema, question, referenceText);
+
 
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);
