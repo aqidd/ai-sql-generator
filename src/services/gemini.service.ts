@@ -121,7 +121,6 @@ RULES:
     const referenceContext = referenceText 
         ? `REFERENCE DOCUMENT:\n${referenceText}\n\n`
         : '';
-    log('info', `Generating reference for question: ${referenceContext  }`);
 
     return `You are a Data Analyst with MySQL expertise.
     Given the following database schema and user question, 
@@ -196,7 +195,7 @@ RULES:
     referenceText?: string
   ): Promise<QueryResult> {
     this.validateServiceState();
-
+    log('info', `Generating SQL query using Gemini API ${referenceText}`);
     try {
       const prompt = errorMessage
         ? this.generateErrorFixPrompt(schema, question, errorMessage)

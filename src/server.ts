@@ -246,10 +246,12 @@ const handleQueryGeneration = async (
   try {
     const queryRequest = req.body as QueryRequest;
     validateQueryRequest(queryRequest);
-    
+    logger.info(`Generating SQL query using Gemini API ${req.app.locals.referenceText}`);
     const queryResult = await geminiService.generateQuery(
       queryRequest.schema,
-      queryRequest.question
+      queryRequest.question,
+      undefined,
+      req.app.locals.referenceText
     );
     res.json(queryResult);
   } catch (error: unknown) {
@@ -412,24 +414,16 @@ const upload = multer({ dest: 'uploads/' });
 // eslint-disable-next-line max-lines-per-function
 app.post('/api/upload-document', upload.single('file'), async (req, res) => {
     try {
-        logger.info('Starting file upload processing');
-
         if (!req.file) {
-            logger.info('No file uploaded');
             return res.status(400).json({ error: 'No file uploaded' });
         }
-
-        logger.info('File uploaded successfully, validating file type');
 
         // Validate file type
         const allowedMimeTypes = ['application/pdf', 'text/plain', 
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
         if (!allowedMimeTypes.includes(req.file.mimetype)) {
-            logger.info('Unsupported file type error:', req.file.mimetype);
             return res.status(400).json({ error: 'Unsupported file type' });
         }
-
-        logger.info('File type validated successfully, extracting text from file');
 
         // Rename file to keep the original extension
         const fileExtension = path.extname(req.file.originalname);
@@ -437,15 +431,15 @@ app.post('/api/upload-document', upload.single('file'), async (req, res) => {
         fs.renameSync(req.file.path, newFilePath);
 
         const text = await extractTextFromFile(newFilePath);
-
-        logger.info('Text extracted successfully, storing reference text in app locals');
-        logger.info(text)
         req.app.locals.referenceText = text;
 
-        logger.info('File upload processing completed successfully');
-        res.json({ success: true, message: 'Document processed successfully' });
+        res.json({ 
+            success: true, 
+            message: 'Document processed successfully', 
+            referenceText: text 
+        });
     } catch (error) {
-      logger.info(JSON.stringify(error)); 
+        logger.info(JSON.stringify(error)); 
         if (error instanceof Error) {
             res.status((error as any).status || 520).json({ 
                 error: error.message 

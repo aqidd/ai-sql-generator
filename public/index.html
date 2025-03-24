@@ -367,6 +367,7 @@ Changes made:
                 const queryResults = ref(null)
                 const queryError = ref(null)
                 const regeneratedQuery = ref(null)
+                const referenceText = ref(localStorage.getItem('referenceText') || '');
 
                 const connectToDatabase = async () => {
                     error.value = ''
@@ -435,7 +436,8 @@ Changes made:
                             },
                             body: JSON.stringify({
                                 schema: schema.value,
-                                question: question.value
+                                question: question.value,
+                                referenceText: referenceText.value || undefined
                             })
                         });
 
@@ -579,6 +581,8 @@ Changes made:
                         }
 
                         const data = await response.json();
+                        referenceText.value = data.referenceText;
+                        localStorage.setItem('referenceText', data.referenceText);
                         alert('Document uploaded successfully');
                     } catch (error) {
                         alert(error.message);
@@ -600,6 +604,7 @@ Changes made:
                     queryResults,
                     queryError,
                     regeneratedQuery,
+                    referenceText,
                     connectToDatabase,
                     disconnect,
                     getDatabaseName,
