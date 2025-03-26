@@ -125,7 +125,8 @@ RULES:
     return `You are a Data Analyst with MySQL expertise.
     Given the following database schema and user question, 
     generate an SQL query that answers user's question. 
-    Read reference document for additional context.
+    SQL must return data from database provided.
+    Use given reference document for additional context.
     Return ONLY a valid JSON object.
 
     Database Schema:
