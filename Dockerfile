@@ -20,6 +20,7 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci --production
+RUN mkdir uploads
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
