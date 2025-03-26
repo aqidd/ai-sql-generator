@@ -167,7 +167,14 @@ Changes made:
                             Format: mysql://username:password@host:port/database
                         </p>
                     </div>
-                    <div class="flex justify-end">
+                    <div class="flex justify-end gap-4">
+                        <button 
+                            @click="testWithDummyDB" 
+                            type="button" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                            <i data-lucide="database" class="w-4 h-4 mr-2"></i>
+                            Test with Dummy DB
+                        </button>
                         <button 
                             type="submit" 
                             class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -434,6 +441,7 @@ Changes made:
                 const referenceText = ref(localStorage.getItem('referenceText') || '');
                 const successMessage = ref(''); // Add success message state
                 const errorMessage = ref('');   // Add error message state
+                const useDummyDB = ref(false); // Add useDummyDB variable
 
                 const connectToDatabase = async () => {
                     error.value = ''
@@ -454,7 +462,7 @@ Changes made:
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify(config)
+                            body: JSON.stringify({ ...config, useDummyDB: useDummyDB.value }) // Include useDummyDB
                         })
 
                         if (!response.ok) {
@@ -503,7 +511,8 @@ Changes made:
                             body: JSON.stringify({
                                 schema: schema.value,
                                 question: question.value,
-                                referenceText: referenceText.value || undefined
+                                referenceText: referenceText.value || undefined,
+                                useDummyDB: useDummyDB.value // Include useDummyDB
                             })
                         });
 
@@ -550,7 +559,8 @@ Changes made:
                                 query: generatedQuery.value.sql,
                                 isUnsafe: generatedQuery.value.isUnsafe,
                                 schema: schema.value,
-                                question: question.value
+                                question: question.value,
+                                useDummyDB: useDummyDB.value // Include useDummyDB
                             })
                         });
 
@@ -611,7 +621,8 @@ Changes made:
                             },
                             body: JSON.stringify({
                                 schema: schema.value,
-                                question: question.value
+                                question: question.value,
+                                useDummyDB: useDummyDB.value // Include useDummyDB
                             })
                         });
 
@@ -655,6 +666,34 @@ Changes made:
                     }
                 };
 
+                const testWithDummyDB = async () => {
+                    error.value = '';
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/api/test-dummy-db', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Failed to connect to dummy database');
+                        }
+
+                        const data = await response.json();
+                        schema.value = data.schema;
+                        connected.value = true;
+                        useDummyDB.value = true;
+                    } catch (e) {
+                        error.value = e.message;
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
                 return {
                     connectionType,
                     standardConfig,
@@ -673,12 +712,14 @@ Changes made:
                     referenceText,
                     successMessage, // Add success message state
                     errorMessage,   // Add error message state
+                    useDummyDB, // Add useDummyDB variable
                     connectToDatabase,
                     disconnect,
                     getDatabaseName,
                     generateQuery,
                     executeQuery,
-                    uploadReferenceDocument
+                    uploadReferenceDocument,
+                    testWithDummyDB
                 }
             }
         }).mount('#app')

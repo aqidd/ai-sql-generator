@@ -216,7 +216,16 @@ const processSchemaRequest = async (config: DatabaseConfig): Promise<TableSchema
 
 const handleSchemaRequest = async (req: express.Request, res: express.Response): Promise<void> => {
   try {
-    const config = req.body as DatabaseConfig;
+    let config = req.body as DatabaseConfig;
+
+    // Use DB_TEST connection string if useDummyDB is true
+    if (req.body.useDummyDB && process.env.DB_TEST) {
+      config = {
+        type: 'connection-string',
+        url: process.env.DB_TEST,
+      };
+    }
+
     const schema = await processSchemaRequest(config);
     res.json({ schema });
   } catch (error) {
@@ -246,7 +255,6 @@ const handleQueryGeneration = async (
   try {
     const queryRequest = req.body as QueryRequest;
     validateQueryRequest(queryRequest);
-    logger.info(`Generating SQL query using Gemini API ${req.app.locals.referenceText}`);
     const queryResult = await geminiService.generateQuery(
       queryRequest.schema,
       queryRequest.question,
@@ -283,7 +291,16 @@ const validateQuerySafety = (isUnsafe: boolean): void => {
 const handleQueryExecution = async (req: express.Request, res: express.Response): Promise<void> => {
   let pool;
   try {
-    const { config, query, isUnsafe, schema, question } = req.body as ExecuteQueryRequest;
+    let { config, query, isUnsafe, schema, question } = req.body as ExecuteQueryRequest;
+
+    // Use DB_TEST connection string if useDummyDB is true
+    if (req.body.useDummyDB && process.env.DB_TEST) {
+      config = {
+        type: 'connection-string',
+        url: process.env.DB_TEST,
+      };
+    }
+
     validateQuerySafety(isUnsafe);
 
     pool = await initializeDatabasePool(config);
@@ -449,6 +466,25 @@ app.post('/api/upload-document', upload.single('file'), async (req, res) => {
                 error: 'Server error' 
             });
         }
+    }
+});
+
+app.get('/api/test-dummy-db', async (_req, res) => {
+    try {
+        const connectionString = process.env.DB_TEST;
+        if (!connectionString) {
+            return res.status(400).json({ error: 'DB_TEST environment variable is not set' });
+        }
+
+        const config: ConnectionStringConfig = {
+            type: 'connection-string',
+            url: connectionString
+        };
+
+        const schema = await processSchemaRequest(config);
+        res.json({ schema });
+    } catch (error) {
+        handleDatabaseError(error as Error, res);
     }
 });
 
