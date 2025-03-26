@@ -20,7 +20,7 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm ci --production
-RUN mkdir uploads
+RUN mkdir uploads && chown node:node uploads
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/public ./public
