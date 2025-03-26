@@ -196,7 +196,7 @@ RULES:
     referenceText?: string
   ): Promise<QueryResult> {
     this.validateServiceState();
-    log('info', `Generating SQL query using Gemini API ${referenceText}`);
+
     try {
       const prompt = errorMessage
         ? this.generateErrorFixPrompt(schema, question, errorMessage)

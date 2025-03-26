@@ -484,7 +484,8 @@ app.get('/api/test-dummy-db', async (_req, res) => {
         const schema = await processSchemaRequest(config);
         res.json({ schema });
     } catch (error) {
-        handleDatabaseError(error as Error, res);
+      logger.info(JSON.stringify(error)); 
+      handleDatabaseError(error as Error, res);
     }
 });
 
