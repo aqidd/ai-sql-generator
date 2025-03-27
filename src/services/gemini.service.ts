@@ -6,7 +6,6 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { log } from 'winston';
 
 interface QueryResult {
   sql: string;
@@ -62,7 +61,7 @@ export class GeminiService {
   constructor(apiKey: string) {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-lite',
+      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 1024
