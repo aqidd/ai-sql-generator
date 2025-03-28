@@ -4,6 +4,7 @@ Changes made:
 2025-03-16: Added support for connection string and port configuration
 2025-03-16: Improved error handling with UI alerts and loading states
 2025-03-16: Fixed schema response handling and query generation
+2025-03-28: Added sample data display for each table
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -375,7 +376,7 @@ Changes made:
                     </button>
                 </div>
 
-                <div v-for="table in schema" :key="table.tableName" class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div v-for="table in schema" :key="table.tableName" class="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
                     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900 flex items-center gap-2">
                             <i data-lucide="table" class="w-5 h-5"></i>
@@ -405,6 +406,41 @@ Changes made:
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Sample Data Section -->
+                    <div v-if="table.sampleData" class="px-4 py-3 bg-blue-50 border-t border-blue-200">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="database" class="w-4 h-4 text-blue-600"></i>
+                            <h4 class="text-sm font-medium text-blue-800">Sample Data</h4>
+                        </div>
+                        <div class="overflow-x-auto bg-white rounded-md border border-blue-100">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th 
+                                            v-for="(value, key) in table.sampleData" 
+                                            :key="key"
+                                            class="px-4 py-2 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">
+                                            {{ key }}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td 
+                                            v-for="(value, key) in table.sampleData" 
+                                            :key="key"
+                                            class="px-4 py-2 text-sm text-gray-700 border-t border-gray-100">
+                                            {{ value === null ? 'NULL' : value }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div v-else class="px-4 py-3 bg-gray-100 border-t border-gray-200 text-sm text-gray-500 italic">
+                        No sample data available for this table
                     </div>
                 </div>
             </div>
@@ -501,7 +537,7 @@ Changes made:
                     error.value = '';
                     generatedQuery.value = null;
                     queryResults.value = null;
-                    
+                    console.log(schema.value)
                     try {
                         const response = await fetch('/api/generate-query', {
                             method: 'POST',
@@ -509,7 +545,7 @@ Changes made:
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
-                                schema: schema.value,
+                                schema: schema.value, // This now includes sample data
                                 question: question.value,
                                 referenceText: referenceText.value || undefined,
                                 useDummyDB: useDummyDB.value // Include useDummyDB
@@ -620,8 +656,9 @@ Changes made:
                                 'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
-                                schema: schema.value,
+                                schema: schema.value, // This now includes sample data
                                 question: question.value,
+                                referenceText: referenceText.value || undefined,
                                 useDummyDB: useDummyDB.value // Include useDummyDB
                             })
                         });

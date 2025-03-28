@@ -16,6 +16,7 @@ interface QueryResult {
 interface TableSchema {
   tableName: string;
   columns: ColumnSchema[];
+  sampleData?: Record<string, any>;
 }
 
 interface ColumnSchema {
@@ -64,10 +65,10 @@ export class GeminiService {
       model: process.env.GEMINI_MODEL || 'gemini-2.0-flash-lite',
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 1024
+        maxOutputTokens: 1024,
       },
     });
-    
+
     // Bind methods to preserve this context
     this.formatColumnInfo = this.formatColumnInfo.bind(this);
     this.formatTableSchema = this.formatTableSchema.bind(this);
@@ -81,10 +82,20 @@ export class GeminiService {
   }
 
   private formatTableSchema(table: TableSchema): string {
-    const columns = table.columns
-      .map((col) => this.formatColumnInfo(col))
-      .join(', ');
-    return `Table ${table.tableName}: ${columns}`;
+    const columns = table.columns.map(col => this.formatColumnInfo(col)).join(', ');
+
+    let schemaInfo = `Table ${table.tableName}: ${columns}`;
+
+    // Add sample data if available
+    if (table.sampleData && Object.keys(table.sampleData).length > 0) {
+      const sampleDataStr = Object.entries(table.sampleData)
+        .map(([key, value]) => `${key}: ${value === null ? 'NULL' : JSON.stringify(value)}`)
+        .join(', ');
+
+      schemaInfo += `\nSample Data: { ${sampleDataStr} }`;
+    }
+
+    return schemaInfo;
   }
 
   private validateInputs(schema: TableSchema[], question: string): void {
@@ -117,9 +128,7 @@ RULES:
     const schemaInfo = schema.map(this.formatTableSchema).join('\n');
     const rules = this.getPromptRules();
 
-    const referenceContext = referenceText 
-        ? `REFERENCE DOCUMENT:\n${referenceText}\n\n`
-        : '';
+    const referenceContext = referenceText ? `REFERENCE DOCUMENT:\n${referenceText}\n\n` : '';
 
     return `You are a Data Analyst with MySQL expertise.
     Given the following database schema and user question, 
@@ -145,8 +154,8 @@ RULES:
         temperature: 0.1,
         topK: 1,
         topP: 0.1,
-        maxOutputTokens: 1024
-      }
+        maxOutputTokens: 1024,
+      },
     });
     return result.response.text();
   }
@@ -162,10 +171,13 @@ RULES:
 
   private validateQueryResult(result: QueryResult): void {
     const { sql, isUnsafe, explanation } = result;
-    const isValid = sql && typeof sql === 'string' &&
+    const isValid =
+      sql &&
+      typeof sql === 'string' &&
       typeof isUnsafe === 'boolean' &&
-      explanation && typeof explanation === 'string';
-      
+      explanation &&
+      typeof explanation === 'string';
+
     if (!isValid) {
       throw new Error('Invalid response format from Gemini API');
     }
@@ -200,7 +212,6 @@ RULES:
       const prompt = errorMessage
         ? this.generateErrorFixPrompt(schema, question, errorMessage)
         : this.generatePrompt(schema, question, referenceText);
-
 
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);

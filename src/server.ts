@@ -4,6 +4,7 @@
  * 2025-03-16: Initial setup with MySQL connection and schema retrieval
  * 2025-03-16: Added Gemini integration and error handling
  * 2025-03-16: Added proper Gemini service initialization
+ * 2025-03-28: Added sample data retrieval for each table
  */
 
 import express from 'express';
@@ -57,6 +58,7 @@ interface ConnectionStringConfig {
 interface TableSchema {
   tableName: string;
   columns: ColumnInfo[];
+  sampleData?: Record<string, any>;
 }
 
 interface ColumnInfo {
@@ -76,15 +78,15 @@ app.use(express.static('public'));
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof SyntaxError && 'body' in err) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Invalid JSON payload',
-      details: err.message
+      details: err.message,
     });
   }
   if (err.name === 'PayloadTooLargeError') {
     return res.status(413).json({
       error: 'Request payload too large',
-      details: 'The request exceeds the maximum allowed size'
+      details: 'The request exceeds the maximum allowed size',
     });
   }
   next(err);
@@ -145,8 +147,8 @@ const getDatabaseName = (config: DatabaseConfig): string => {
 };
 
 const getTableColumns = async (
-  pool: Pool, 
-  dbName: string, 
+  pool: Pool,
+  dbName: string,
   tableName: string
 ): Promise<ColumnInfo[]> => {
   const [columns] = await pool.query<RowDataPacket[]>(
@@ -172,15 +174,30 @@ const getTables = async (pool: Pool, dbName: string): Promise<string[]> => {
   return tables.map((t: RowDataPacket) => t.TABLE_NAME);
 };
 
+const getSampleData = async (
+  pool: Pool,
+  tableName: string
+): Promise<Record<string, any> | undefined> => {
+  try {
+    const [rows] = await pool.query(`SELECT * FROM ${tableName} LIMIT 1`);
+    const sampleRows = rows as RowDataPacket[];
+    return sampleRows.length > 0 ? sampleRows[0] : undefined;
+  } catch (error) {
+    console.error(`Error fetching sample data from ${tableName}:`, error);
+    return undefined;
+  }
+};
+
 const buildSchema = async (
-  pool: Pool, 
-  dbName: string, 
+  pool: Pool,
+  dbName: string,
   tables: string[]
 ): Promise<TableSchema[]> => {
   const schema: TableSchema[] = [];
   for (const tableName of tables) {
     const columns = await getTableColumns(pool, dbName, tableName);
-    schema.push({ tableName, columns });
+    const sampleData = await getSampleData(pool, tableName);
+    schema.push({ tableName, columns, sampleData });
   }
   return schema;
 };
@@ -199,7 +216,6 @@ const handleDatabaseError = (error: Error, res: express.Response): void => {
     res.status(500).json({ error: errorMessage });
   }
 };
-
 
 const processSchemaRequest = async (config: DatabaseConfig): Promise<TableSchema[]> => {
   const pool = createDatabasePool(config);
@@ -240,6 +256,7 @@ app.post('/api/schema', handleSchemaRequest);
 interface QueryRequest {
   schema: TableSchema[];
   question: string;
+  referenceText?: string;
 }
 
 const validateQueryRequest = (req: QueryRequest): void => {
@@ -249,7 +266,7 @@ const validateQueryRequest = (req: QueryRequest): void => {
 };
 
 const handleQueryGeneration = async (
-  req: express.Request, 
+  req: express.Request,
   res: express.Response
 ): Promise<void> => {
   try {
@@ -258,8 +275,7 @@ const handleQueryGeneration = async (
     const queryResult = await geminiService.generateQuery(
       queryRequest.schema,
       queryRequest.question,
-      undefined,
-      req.app.locals.referenceText
+      queryRequest.referenceText || req.app.locals.referenceText
     );
     res.json(queryResult);
   } catch (error: unknown) {
@@ -283,7 +299,7 @@ const validateQuerySafety = (isUnsafe: boolean): void => {
   if (isUnsafe && process.env.ALLOW_UNSAFE_QUERIES !== 'true') {
     throw new Error(
       'Unsafe queries (UPDATE/DELETE) are not allowed. Update ALLOW_UNSAFE_QUERIES ' +
-      'in .env to enable.'
+        'in .env to enable.'
     );
   }
 };
@@ -321,7 +337,6 @@ const executeQuery = async (
 ): Promise<void> => {
   await executeQueryWithHandling(pool, query, schema, question, res);
 };
-
 
 const initializeDatabasePool = async (config: DatabaseConfig): Promise<Pool> => {
   const pool = createDatabasePool(config);
@@ -416,8 +431,7 @@ const handleQueryError = (queryError: unknown, res: express.Response): void => {
 };
 
 const handleExecutionError = (error: unknown, res: express.Response): void => {
-  const status =
-    error instanceof Error && error.message.includes('Unsafe queries') ? 403 : 500;
+  const status = error instanceof Error && error.message.includes('Unsafe queries') ? 403 : 500;
   res.status(status).json({
     success: false,
     error: error instanceof Error ? error.message : 'Unknown error',
@@ -430,63 +444,66 @@ const upload = multer({ dest: 'uploads/' });
 
 // eslint-disable-next-line max-lines-per-function
 app.post('/api/upload-document', upload.single('file'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-
-        // Validate file type
-        const allowedMimeTypes = ['application/pdf', 'text/plain', 
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        if (!allowedMimeTypes.includes(req.file.mimetype)) {
-            return res.status(400).json({ error: 'Unsupported file type' });
-        }
-
-        // Rename file to keep the original extension
-        const fileExtension = path.extname(req.file.originalname);
-        const newFilePath = `${req.file.path}${fileExtension}`;
-        fs.renameSync(req.file.path, newFilePath);
-
-        const text = await extractTextFromFile(newFilePath);
-        req.app.locals.referenceText = text;
-
-        res.json({ 
-            success: true, 
-            message: 'Document processed successfully', 
-            referenceText: text 
-        });
-    } catch (error) {
-        logger.info(JSON.stringify(error)); 
-        if (error instanceof Error) {
-            res.status((error as any).status || 520).json({ 
-                error: error.message 
-            });
-        } else {
-            res.status(500).json({ 
-                error: 'Server error' 
-            });
-        }
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
     }
+
+    // Validate file type
+    const allowedMimeTypes = [
+      'application/pdf',
+      'text/plain',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    if (!allowedMimeTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Unsupported file type' });
+    }
+
+    // Rename file to keep the original extension
+    const fileExtension = path.extname(req.file.originalname);
+    const newFilePath = `${req.file.path}${fileExtension}`;
+    fs.renameSync(req.file.path, newFilePath);
+
+    const text = await extractTextFromFile(newFilePath);
+    req.app.locals.referenceText = text;
+
+    res.json({
+      success: true,
+      message: 'Document processed successfully',
+      referenceText: text,
+    });
+  } catch (error) {
+    logger.info(JSON.stringify(error));
+    if (error instanceof Error) {
+      res.status((error as any).status || 520).json({
+        error: error.message,
+      });
+    } else {
+      res.status(500).json({
+        error: 'Server error',
+      });
+    }
+  }
 });
 
 app.get('/api/test-dummy-db', async (_req, res) => {
-    try {
-        const connectionString = process.env.DB_TEST;
-        if (!connectionString) {
-            return res.status(400).json({ error: 'DB_TEST environment variable is not set' });
-        }
-
-        const config: ConnectionStringConfig = {
-            type: 'connection-string',
-            url: connectionString
-        };
-
-        const schema = await processSchemaRequest(config);
-        res.json({ schema });
-    } catch (error) {
-      logger.info(JSON.stringify(error)); 
-      handleDatabaseError(error as Error, res);
+  try {
+    const connectionString = process.env.DB_TEST;
+    if (!connectionString) {
+      return res.status(400).json({ error: 'DB_TEST environment variable is not set' });
     }
+
+    const config: ConnectionStringConfig = {
+      type: 'connection-string',
+      url: connectionString,
+    };
+
+    const schema = await processSchemaRequest(config);
+    res.json({ schema });
+  } catch (error) {
+    logger.info(JSON.stringify(error));
+    handleDatabaseError(error as Error, res);
+  }
 });
 
 app.get('/', (_req, res) => {
@@ -495,9 +512,7 @@ app.get('/', (_req, res) => {
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
-  transports: [
-    new winston.transports.Console(),
-  ],
+  transports: [new winston.transports.Console()],
 });
 
 app.listen(port, () => {
