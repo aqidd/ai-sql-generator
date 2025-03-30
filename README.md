@@ -12,7 +12,8 @@ A powerful tool that helps you explore and query your MySQL database using natur
 ## 🎥 Preview
 
 Check out the video preview of the tool in action:
-![Watch the video](public/DB%20AI%20Assistant.mp4)
+
+https://db-ai-assistant.flipboxstudio.com/DB%20AI%20Assistant.mp4
 
 ## 🌐 Live Demo
 
