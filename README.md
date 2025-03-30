@@ -9,6 +9,15 @@ Changes made:
 A powerful tool that helps you explore and query your MySQL database using natural language. Simply ask questions in plain English, and let the AI generate optimized SQL queries for you. Built with Express, TypeScript, Vue.js, and Google's Gemini AI.
 ![MySQL AI Query Assistant](public/wp-ai-query.png)
 
+## 🎥 Preview
+
+Check out the video preview of the tool in action:
+![Watch the video](public/DB%20AI%20Assistant.mp4)
+
+## 🌐 Live Demo
+
+Try the live demo here: [https://db-ai-assistant.flipboxstudio.com/](https://db-ai-assistant.flipboxstudio.com/)
+
 ## ✨ Features
 
 - **Natural Language to SQL**: Convert English questions into optimized SQL queries
