@@ -14,7 +14,9 @@ Changes made:
     <title>Database Schema Viewer</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- TODO remove lucide -->
+    <!-- <script src="https://unpkg.com/lucide@latest"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-4589K7P5CK"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -328,6 +330,65 @@ Changes made:
                   placeholder="e.g., 'Show me all users who registered this month' or 'Find the total number of orders by category'"
                 ></textarea>
               </div>
+              
+              <!-- Chart Type Selection -->
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Visualization Type</label>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    @click="selectedChartType = null"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === null
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    <i data-lucide="table" class="w-4 h-4"></i>
+                    None
+                  </button>
+                  <button
+                    @click="selectedChartType = 'pie'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'pie'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                    Pie Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'line'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'line'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    <i data-lucide="line-chart" class="w-4 h-4"></i>
+                    Line Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'bar'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'bar'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    <i data-lucide="bar-chart" class="w-4 h-4"></i>
+                    Bar Chart
+                  </button>
+                </div>
+              </div>
               <!-- Preview Document -->
               <div
                 v-if="referenceText"
@@ -457,7 +518,7 @@ Changes made:
                       class="inline-flex items-center px-4 py-2 border border-yellow-600 rounded-md text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
                     >
                       <i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i>
-                      Regenerate Query
+                      Fix and Regenerate Query
                     </button>
                     <button
                       @click="queryError = null"
@@ -467,6 +528,17 @@ Changes made:
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Chart Visualization -->
+            <div v-if="queryResults && generatedQuery.chartConfig" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+              <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <i :data-lucide="getChartIcon(generatedQuery.chartConfig.type)" class="w-5 h-5"></i>
+                Data Visualization
+              </h3>
+              <div class="h-80 relative">
+                <canvas ref="chartCanvas"></canvas>
               </div>
             </div>
 
@@ -689,6 +761,9 @@ Changes made:
           const successMessage = ref(''); // Add success message state
           const errorMessage = ref(''); // Add error message state
           const useDummyDB = ref(false); // Add useDummyDB variable
+          const selectedChartType = ref(null); // Chart type selection
+          const chartCanvas = ref(null); // Reference to chart canvas
+          const chartInstance = ref(null); // Chart.js instance
 
           const connectToDatabase = async () => {
             error.value = '';
@@ -749,7 +824,7 @@ Changes made:
             error.value = '';
             generatedQuery.value = null;
             queryResults.value = null;
-            console.log(schema.value);
+
             try {
               const response = await fetch('/api/generate-query', {
                 method: 'POST',
@@ -761,6 +836,7 @@ Changes made:
                   question: question.value,
                   referenceText: referenceText.value || undefined,
                   useDummyDB: useDummyDB.value, // Include useDummyDB
+                  chartType: selectedChartType.value,
                 }),
               });
 
@@ -810,6 +886,7 @@ Changes made:
                   schema: schema.value,
                   question: question.value,
                   useDummyDB: useDummyDB.value, // Include useDummyDB
+                  chartType: selectedChartType.value,
                 }),
               });
 
@@ -826,6 +903,13 @@ Changes made:
                   ...generatedQuery.value,
                   sql: data.regeneratedQuery.sql,
                 };
+              }
+              
+              // Render chart if chart config is available
+              if (generatedQuery.value && generatedQuery.value.chartConfig) {
+                Vue.nextTick(() => {
+                  renderChart(data.results, generatedQuery.value.chartConfig);
+                });
               }
             } catch (e) {
               queryError.value = e.message;
@@ -859,7 +943,6 @@ Changes made:
             if (!question.value || !schema.value.length) return;
 
             queryLoading.value = true;
-            queryError.value = null;
             regeneratedQuery.value = null;
 
             try {
@@ -872,7 +955,9 @@ Changes made:
                   schema: schema.value, // This now includes sample data
                   question: question.value,
                   referenceText: referenceText.value || undefined,
+                  error: queryError.value || undefined,
                   useDummyDB: useDummyDB.value, // Include useDummyDB
+                  chartType: selectedChartType.value, // Include chart type
                 }),
               });
 
@@ -944,6 +1029,166 @@ Changes made:
             }
           };
 
+          // Chart rendering functions
+          const getChartIcon = (chartType) => {
+            switch (chartType) {
+              case 'pie': return 'pie-chart';
+              case 'line': return 'line-chart';
+              case 'bar': return 'bar-chart';
+              default: return 'chart';
+            }
+          };
+          
+          const renderChart = (data, chartConfig) => {
+            // Destroy previous chart if it exists
+            if (chartInstance.value) {
+              chartInstance.value.destroy();
+            }
+            
+            if (!chartCanvas.value || !data || data.length === 0) return;
+            
+            const ctx = chartCanvas.value.getContext('2d');
+            const { type } = chartConfig;
+            
+            let chartData;
+            let options;
+            
+            switch (type) {
+              case 'pie':
+                chartData = preparePieChartData(data, chartConfig);
+                options = {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'right',
+                    },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => ` ${context.label}: ${context.parsed}`
+                      }
+                    }
+                  }
+                };
+                break;
+                
+              case 'line':
+                chartData = prepareLineChartData(data, chartConfig);
+                options = {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      beginAtZero: true
+                    }
+                  }
+                };
+                break;
+                
+              case 'bar':
+                chartData = prepareBarChartData(data, chartConfig);
+                options = {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    x: {
+                      stacked: true,
+                    },
+                    y: {
+                      stacked: true,
+                      beginAtZero: true
+                    }
+                  }
+                };
+                break;
+            }
+            
+            chartInstance.value = new Chart(ctx, {
+              type,
+              data: chartData,
+              options
+            });
+          };
+          
+          const preparePieChartData = (data, config) => {
+            const { labelColumn, valueColumn } = config;
+            
+            // Generate random colors for each slice
+            const generateColors = (count) => {
+              const colors = [];
+              for (let i = 0; i < count; i++) {
+                const hue = (i * 137) % 360; // Use golden ratio for nice color distribution
+                colors.push(`hsl(${hue}, 70%, 60%)`);
+              }
+              return colors;
+            };
+            
+            const labels = data.map(item => item[labelColumn]);
+            const values = data.map(item => item[valueColumn]);
+            const backgroundColor = generateColors(labels.length);
+            
+            return {
+              labels,
+              datasets: [{
+                data: values,
+                backgroundColor,
+                borderWidth: 1
+              }]
+            };
+          };
+          
+          const prepareLineChartData = (data, config) => {
+            const { timeColumn, seriesColumns } = config;
+            
+            // Sort data by time column if it exists
+            if (timeColumn) {
+              data.sort((a, b) => new Date(a[timeColumn]) - new Date(b[timeColumn]));
+            }
+            
+            const labels = data.map(item => item[timeColumn]);
+            
+            // Generate datasets for each series
+            console.log(seriesColumns)
+            const datasets = seriesColumns.map((column, index) => {
+              const hue = (index * 137) % 360;
+              return {
+                label: column,
+                data: data.map(item => item[column]),
+                borderColor: `hsl(${hue}, 70%, 60%)`,
+                backgroundColor: `hsla(${hue}, 70%, 60%, 0.1)`,
+                fill: false,
+                tension: 0.4
+              };
+            });
+            
+            return {
+              labels,
+              datasets
+            };
+          };
+          
+          const prepareBarChartData = (data, config) => {
+            const { categoryColumn, seriesColumns } = config;
+            
+            const labels = data.map(item => item[categoryColumn]);
+            
+            // Generate datasets for each series
+            const datasets = seriesColumns.map((column, index) => {
+              const hue = (index * 137) % 360;
+              return {
+                label: column,
+                data: data.map(item => item[column]),
+                backgroundColor: `hsl(${hue}, 70%, 60%)`,
+                stack: 'Stack 0'
+              };
+            });
+            
+            return {
+              labels,
+              datasets
+            };
+          };
+
           return {
             connectionType,
             standardConfig,
@@ -963,6 +1208,9 @@ Changes made:
             successMessage, // Add success message state
             errorMessage, // Add error message state
             useDummyDB, // Add useDummyDB variable
+            selectedChartType,
+            chartCanvas,
+            getChartIcon,
             connectToDatabase,
             disconnect,
             getDatabaseName,
@@ -970,12 +1218,13 @@ Changes made:
             executeQuery,
             uploadReferenceDocument,
             testWithDummyDB,
+            regenerateQuery, // Add regenerateQuery to the returned object
           };
         },
       }).mount('#app');
 
       // Initialize Lucide icons
-      lucide.createIcons();
+      // lucide.createIcons();
     </script>
   </body>
 </html>

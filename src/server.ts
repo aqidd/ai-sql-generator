@@ -23,6 +23,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GeminiService } from './services/gemini.service';
 import winston from 'winston';
+import { log } from 'console';
 import { extractTextFromFile } from './utils/document-processor'; // Utility for text extraction
 import fs from 'fs';
 
@@ -254,14 +255,19 @@ app.post('/api/schema', handleSchemaRequest);
 // Serve the main page
 // Generate SQL query using Gemini
 interface QueryRequest {
+  error: string | undefined;
   schema: TableSchema[];
   question: string;
   referenceText?: string;
+  chartType?: string | undefined;
 }
 
 const validateQueryRequest = (req: QueryRequest): void => {
   if (!req.schema || !req.question) {
     throw new Error('Schema and question are required');
+  }
+  if (req.chartType && !['pie', 'line', 'bar'].includes(req.chartType)) {
+    throw new Error('Chart type must be one of: pie, line, bar');
   }
 };
 
@@ -272,10 +278,13 @@ const handleQueryGeneration = async (
   try {
     const queryRequest = req.body as QueryRequest;
     validateQueryRequest(queryRequest);
+    log('handle query generation', queryRequest.chartType)
     const queryResult = await geminiService.generateQuery(
       queryRequest.schema,
       queryRequest.question,
-      queryRequest.referenceText || req.app.locals.referenceText
+      queryRequest.error,
+      queryRequest.referenceText || req.app.locals.referenceText,
+      queryRequest.chartType
     );
     res.json(queryResult);
   } catch (error: unknown) {
@@ -293,6 +302,8 @@ interface ExecuteQueryRequest {
   isUnsafe: boolean;
   schema?: TableSchema[];
   question?: string;
+  referenceText?: string;
+  chartType?: string | null;
 }
 
 const validateQuerySafety = (isUnsafe: boolean): void => {
@@ -307,7 +318,7 @@ const validateQuerySafety = (isUnsafe: boolean): void => {
 const handleQueryExecution = async (req: express.Request, res: express.Response): Promise<void> => {
   let pool;
   try {
-    let { config, query, isUnsafe, schema, question } = req.body as ExecuteQueryRequest;
+    let { config, query, isUnsafe, schema, question, referenceText } = req.body as ExecuteQueryRequest;
 
     // Use DB_TEST connection string if useDummyDB is true
     if (req.body.useDummyDB && process.env.DB_TEST) {
@@ -320,7 +331,7 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
     validateQuerySafety(isUnsafe);
 
     pool = await initializeDatabasePool(config);
-    await executeQuery(pool, query, schema, question, res);
+    await executeQuery(pool, query, schema, question, res, referenceText, req.body.chartType);
   } catch (error: unknown) {
     handleExecutionError(error, res);
   } finally {
@@ -333,9 +344,11 @@ const executeQuery = async (
   query: string,
   schema: TableSchema[] | undefined,
   question: string | undefined,
-  res: express.Response
+  res: express.Response,
+  referenceText?: string,
+  chartType?: string | undefined
 ): Promise<void> => {
-  await executeQueryWithHandling(pool, query, schema, question, res);
+  await executeQueryWithHandling(pool, query, schema, question, res, chartType);
 };
 
 const initializeDatabasePool = async (config: DatabaseConfig): Promise<Pool> => {
@@ -349,15 +362,19 @@ const executeQueryWithHandling = async (
   query: string,
   schema: TableSchema[] | undefined,
   question: string | undefined,
-  res: express.Response
+  res: express.Response,
+  referenceText?: string,
+  chartType?: string | undefined
 ): Promise<void> => {
   try {
     const results = await pool.query(query);
     res.json({ success: true, results: results[0] });
   } catch (queryError: unknown) {
     if (schema && question) {
-      await handleQueryRegeneration(pool, queryError, schema, question, res);
+      log('handle query regeneration', chartType)
+      await handleQueryRegeneration(pool, queryError, schema, question, res, referenceText, chartType);
     } else {
+      log('handle query error')
       handleQueryError(queryError, res);
     }
   }
@@ -368,11 +385,14 @@ const handleQueryRegeneration = async (
   queryError: unknown,
   schema: TableSchema[],
   question: string,
-  res: express.Response
+  res: express.Response,
+  referenceText?: string,
+  chartType?: string | undefined
 ): Promise<void> => {
   const errorMessage = extractErrorMessage(queryError);
   try {
-    const regenerated = await regenerateQuery(schema, question, errorMessage);
+    log('handle query regeneration...', chartType)
+    const regenerated = await regenerateQuery(schema, question, errorMessage, referenceText, chartType);
     await executeRegeneratedQuery(pool, regenerated, errorMessage, res);
   } catch (regenerateError: unknown) {
     handleRegenerationError(regenerateError, queryError, res);
@@ -386,9 +406,12 @@ const extractErrorMessage = (queryError: unknown): string => {
 const regenerateQuery = async (
   schema: TableSchema[],
   question: string,
-  errorMessage: string
+  errorMessage: string,
+  referenceText?: string,
+  chartType?: string | undefined
 ): Promise<{ sql: string; explanation: string }> => {
-  return geminiService.generateQuery(schema, question, errorMessage);
+  log('Regenerating query...', chartType);
+  return geminiService.generateQuery(schema, question, errorMessage, referenceText, chartType);
 };
 
 const executeRegeneratedQuery = async (
@@ -438,6 +461,9 @@ const handleExecutionError = (error: unknown, res: express.Response): void => {
   });
 };
 
+// TODO: execute query should not auto-regenerate. It should return the error and let the client handle it.
+// TODO: remove unnecessary parameters and auto-regenerate from handleQueryExecution
+// TODO: handleQueryExecution should only receive query as param
 app.post('/api/execute-query', handleQueryExecution);
 
 const upload = multer({ dest: 'uploads/' });
