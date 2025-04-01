@@ -300,10 +300,6 @@ interface ExecuteQueryRequest {
   config: DatabaseConfig;
   query: string;
   isUnsafe: boolean;
-  schema?: TableSchema[];
-  question?: string;
-  referenceText?: string;
-  chartType?: string | null;
 }
 
 const validateQuerySafety = (isUnsafe: boolean): void => {
@@ -315,11 +311,25 @@ const validateQuerySafety = (isUnsafe: boolean): void => {
   }
 };
 
+const validateDatabaseConfig = (config: DatabaseConfig): void => {
+  if (config.type === 'standard') {
+    if (!config.host || !config.user || !config.password || !config.database) {
+      throw new Error('Missing required DB Config fields: host, user, password, or database.');
+    }
+  } else if (config.type === 'connection-string') {
+    if (!config.url) {
+      throw new Error('Missing required database connection string.');
+    }
+  } else {
+    throw new Error('Invalid database configuration type.');
+  }
+};
+
 const handleQueryExecution = async (req: express.Request, res: express.Response): Promise<void> => {
   let pool;
   try {
-    let { config, query, isUnsafe, schema, question, referenceText } = req.body as ExecuteQueryRequest;
-
+    let { config, query, isUnsafe } = req.body as ExecuteQueryRequest;
+    
     // Use DB_TEST connection string if useDummyDB is true
     if (req.body.useDummyDB && process.env.DB_TEST) {
       config = {
@@ -327,28 +337,25 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
         url: process.env.DB_TEST,
       };
     }
-
+    validateDatabaseConfig(config);
     validateQuerySafety(isUnsafe);
 
     pool = await initializeDatabasePool(config);
-    await executeQuery(pool, query, schema, question, res, referenceText, req.body.chartType);
+    const results = await pool.query(query);
+    res.json({ success: true, results: results[0] });
   } catch (error: unknown) {
-    handleExecutionError(error, res);
+    logger.error(`Query execution error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    handleQueryError(error, res);
   } finally {
     if (pool) await pool.end();
   }
 };
 
-const executeQuery = async (
-  pool: Pool,
-  query: string,
-  schema: TableSchema[] | undefined,
-  question: string | undefined,
-  res: express.Response,
-  referenceText?: string,
-  chartType?: string | undefined
-): Promise<void> => {
-  await executeQueryWithHandling(pool, query, schema, question, res, chartType);
+const handleQueryError = (queryError: unknown, res: express.Response): void => {
+  res.status(500).json({
+    success: false,
+    error: queryError instanceof Error ? queryError.message : 'Unknown error',
+  });
 };
 
 const initializeDatabasePool = async (config: DatabaseConfig): Promise<Pool> => {
@@ -357,113 +364,6 @@ const initializeDatabasePool = async (config: DatabaseConfig): Promise<Pool> => 
   return pool;
 };
 
-const executeQueryWithHandling = async (
-  pool: Pool,
-  query: string,
-  schema: TableSchema[] | undefined,
-  question: string | undefined,
-  res: express.Response,
-  referenceText?: string,
-  chartType?: string | undefined
-): Promise<void> => {
-  try {
-    const results = await pool.query(query);
-    res.json({ success: true, results: results[0] });
-  } catch (queryError: unknown) {
-    if (schema && question) {
-      log('handle query regeneration', chartType)
-      await handleQueryRegeneration(pool, queryError, schema, question, res, referenceText, chartType);
-    } else {
-      log('handle query error')
-      handleQueryError(queryError, res);
-    }
-  }
-};
-
-const handleQueryRegeneration = async (
-  pool: Pool,
-  queryError: unknown,
-  schema: TableSchema[],
-  question: string,
-  res: express.Response,
-  referenceText?: string,
-  chartType?: string | undefined
-): Promise<void> => {
-  const errorMessage = extractErrorMessage(queryError);
-  try {
-    log('handle query regeneration...', chartType)
-    const regenerated = await regenerateQuery(schema, question, errorMessage, referenceText, chartType);
-    await executeRegeneratedQuery(pool, regenerated, errorMessage, res);
-  } catch (regenerateError: unknown) {
-    handleRegenerationError(regenerateError, queryError, res);
-  }
-};
-
-const extractErrorMessage = (queryError: unknown): string => {
-  return queryError instanceof Error ? queryError.message : 'Unknown error';
-};
-
-const regenerateQuery = async (
-  schema: TableSchema[],
-  question: string,
-  errorMessage: string,
-  referenceText?: string,
-  chartType?: string | undefined
-): Promise<{ sql: string; explanation: string }> => {
-  log('Regenerating query...', chartType);
-  return geminiService.generateQuery(schema, question, errorMessage, referenceText, chartType);
-};
-
-const executeRegeneratedQuery = async (
-  pool: Pool,
-  regenerated: { sql: string; explanation: string },
-  errorMessage: string,
-  res: express.Response
-): Promise<void> => {
-  const results = await pool.query(regenerated.sql);
-  res.json({
-    success: true,
-    results: results[0],
-    regeneratedQuery: {
-      sql: regenerated.sql,
-      explanation: regenerated.explanation,
-    },
-    originalError: errorMessage,
-  });
-};
-
-const handleRegenerationError = (
-  regenerateError: unknown,
-  queryError: unknown,
-  res: express.Response
-): void => {
-  res.status(500).json({
-    success: false,
-    error: regenerateError instanceof Error ? regenerateError.message : 'Unknown error',
-    originalError: queryError instanceof Error ? queryError.message : 'Unknown error',
-  });
-};
-
-const handleQueryError = (queryError: unknown, res: express.Response): void => {
-  const status =
-    queryError instanceof Error && queryError.message.includes('Unsafe queries') ? 403 : 500;
-  res.status(status).json({
-    success: false,
-    error: queryError instanceof Error ? queryError.message : 'Unknown error',
-  });
-};
-
-const handleExecutionError = (error: unknown, res: express.Response): void => {
-  const status = error instanceof Error && error.message.includes('Unsafe queries') ? 403 : 500;
-  res.status(status).json({
-    success: false,
-    error: error instanceof Error ? error.message : 'Unknown error',
-  });
-};
-
-// TODO: execute query should not auto-regenerate. It should return the error and let the client handle it.
-// TODO: remove unnecessary parameters and auto-regenerate from handleQueryExecution
-// TODO: handleQueryExecution should only receive query as param
 app.post('/api/execute-query', handleQueryExecution);
 
 const upload = multer({ dest: 'uploads/' });

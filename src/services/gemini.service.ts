@@ -213,7 +213,7 @@ RULES:
     referenceText?: string,
     chartType?: string | undefined
   ): string {
-    log('Generating prompt??...', chartType)
+    log('Generating prompt...', chartType);
     this.validateInputs(schema, question);
     const schemaInfo = schema.map(this.formatTableSchema).join('\n');
     const rules = this.getPromptRules(chartType);
@@ -310,20 +310,17 @@ RULES:
     referenceText?: string,
     chartType?: string | undefined
   ): Promise<QueryResult> {
-    log('Generating query??...', chartType);
+    log('Generating query...', chartType);
     this.validateServiceState();
     try {
-      log('error??...', errorMessage)
       const prompt = errorMessage
         ? this.generateErrorFixPrompt(schema, question, errorMessage, chartType)
         : this.generatePrompt(schema, question, referenceText, chartType);
-      // log('Generated prompt:', prompt);
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);
       queryResult.isUnsafe ||= this.checkUnsafeOperations(queryResult.sql);
       return queryResult;
     } catch (error) {
-      log('Failed to generate SQL query??...', chartType)
       throw new Error(`Failed to generate SQL query: ${(error as Error).message}`);
     }
   }

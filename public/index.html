@@ -859,8 +859,6 @@ Changes made:
 
             executionLoading.value = true;
             queryError.value = null;
-            regeneratedQuery.value = null;
-            queryResults.value = null;
 
             try {
               const config =
@@ -873,7 +871,7 @@ Changes made:
                       type: 'connection-string',
                       url: connectionString.value,
                     };
-
+              
               const response = await fetch('/api/execute-query', {
                 method: 'POST',
                 headers: {
@@ -883,10 +881,7 @@ Changes made:
                   config,
                   query: generatedQuery.value.sql,
                   isUnsafe: generatedQuery.value.isUnsafe,
-                  schema: schema.value,
-                  question: question.value,
                   useDummyDB: useDummyDB.value, // Include useDummyDB
-                  chartType: selectedChartType.value,
                 }),
               });
 
@@ -897,20 +892,6 @@ Changes made:
               }
 
               queryResults.value = data.results;
-              if (data.regeneratedQuery) {
-                regeneratedQuery.value = data.regeneratedQuery;
-                generatedQuery.value = {
-                  ...generatedQuery.value,
-                  sql: data.regeneratedQuery.sql,
-                };
-              }
-              
-              // Render chart if chart config is available
-              if (generatedQuery.value && generatedQuery.value.chartConfig) {
-                Vue.nextTick(() => {
-                  renderChart(data.results, generatedQuery.value.chartConfig);
-                });
-              }
             } catch (e) {
               queryError.value = e.message;
             } finally {
@@ -1188,6 +1169,19 @@ Changes made:
               datasets
             };
           };
+
+          const watch = Vue.watch;
+
+          // Watch for changes in queryResults and chartConfig to render the chart
+          watch(
+            () => ({ queryResults: queryResults.value, chartConfig: generatedQuery.value?.chartConfig }),
+            ({ queryResults, chartConfig }) => {
+              if (queryResults && chartConfig) {
+                console.log(queryResults, chartConfig)
+                renderChart(queryResults, chartConfig);
+              }
+            }
+          );
 
           return {
             connectionType,
