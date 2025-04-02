@@ -1,5 +1,3 @@
-
-
 export const responseSchema = {
   type: 'object',
   description: 'SQL query generation response format',
@@ -23,35 +21,46 @@ export const responseSchema = {
       properties: {
         type: {
           type: 'string',
-          description: 'Type of chart to generate (pie, line, bar)',
-          enum: ['pie', 'line', 'bar']
+          description:
+            'Type of chart to generate (pie, line, bar, doughnut, polarArea, radar, scatter, bubble, mixed)',
+          enum: [
+            'pie',
+            'line',
+            'bar',
+            'doughnut',
+            'polarArea',
+            'radar',
+            'scatter',
+            'bubble',
+            'mixed',
+          ],
         },
         labelColumn: {
           type: 'string',
-          description: 'Column to use for labels (pie chart) or x-axis (line/bar charts)'
+          description: 'Column to use for labels (pie chart) or x-axis (line/bar charts)',
         },
         valueColumn: {
           type: 'string',
-          description: 'Column to use for values (pie chart) or y-axis (line/bar charts)'
+          description: 'Column to use for values (pie chart) or y-axis (line/bar charts)',
         },
         categoryColumn: {
           type: 'string',
-          description: 'Column to use for categories in bar charts'
+          description: 'Column to use for categories in bar charts',
         },
         seriesColumns: {
           type: 'array',
           description: 'Columns to use for multiple series in line or stacked bar charts',
           items: {
-            type: 'string'
-          }
+            type: 'string',
+          },
         },
         timeColumn: {
           type: 'string',
-          description: 'Column to use for time series data in line charts'
-        }
+          description: 'Column to use for time series data in line charts',
+        },
       },
-      required: ['type']
-    }
+      required: ['type'],
+    },
   },
   required: ['sql', 'isUnsafe', 'explanation'],
   propertyOrdering: ['sql', 'explanation', 'isUnsafe', 'chartConfig'],
@@ -60,7 +69,7 @@ export const responseSchema = {
 
 export const getPromptRules = (chartType: string | null = null): string => {
   const chartExample = chartType ? getChartConfigExample(chartType) : '';
-  
+
   const format = chartType
     ? `FORMAT:
 {
@@ -84,10 +93,11 @@ RULES:
 3. isUnsafe=true for UPDATE/DELETE
 4. Efficient JOINs
 5. Valid SQL syntax${
-  chartType ? '\n6. Query results must be suitable for the requested chart type' : ''
-}`;
+    chartType ? '\n6. Query results must be suitable for the requested chart type' : ''
+  }`;
 };
 
+// eslint-disable-next-line max-lines-per-function
 export const getChartConfigExample = (chartType: string): string => {
   switch (chartType) {
     case 'pie':
@@ -108,6 +118,38 @@ export const getChartConfigExample = (chartType: string): string => {
     "categoryColumn": "product_category",
     "seriesColumns": ["revenue", "cost"]
   }`;
+    case 'doughnut':
+      return `{
+    "type": "doughnut",
+    "labelColumn": "category_name",
+    "valueColumn": "total_count"
+  }`;
+    case 'polarArea':
+      return `{
+    "type": "polarArea",
+    "labelColumn": "category_name",
+    "valueColumn": "total_count"
+  }`;
+    case 'radar':
+      return `{
+    "type": "radar",
+    "seriesColumns": ["metric1", "metric2", "metric3"]
+  }`;
+    case 'scatter':
+      return `{
+    "type": "scatter",
+    "seriesColumns": ["x_value", "y_value"]
+  }`;
+    case 'bubble':
+      return `{
+    "type": "bubble",
+    "seriesColumns": ["x_value", "y_value", "radius"]
+  }`;
+    case 'mixed':
+      return `{
+    "type": "mixed",
+    "seriesColumns": ["bar_data", "line_data", "area_data"]
+  }`;
     default:
       return '{}';
   }
@@ -120,7 +162,7 @@ export const getReferenceContext = (referenceText?: string): string => {
 export const generateChartContext = (chartType?: string): string => {
   return chartType
     ? `The results should be visualized as a ${chartType} chart. ` +
-      `Make sure the SQL query returns data in a format suitable for this chart type.`
+        `Make sure the SQL query returns data in a format suitable for this chart type.`
     : 'The results will not be visualized.';
 };
 

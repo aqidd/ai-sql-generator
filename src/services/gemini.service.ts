@@ -8,14 +8,23 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { log } from 'console';
-import { 
-  responseSchema, 
-  getReferenceContext, 
+import {
+  responseSchema,
+  getReferenceContext,
   generatePromptTemplate,
-} from '../constants/gemini.constant';
+} from '../constants/prompt.constant';
 
 interface ChartConfig {
-  type: 'pie' | 'line' | 'bar';
+  type:
+    | 'pie'
+    | 'line'
+    | 'bar'
+    | 'doughnut'
+    | 'polarArea'
+    | 'radar'
+    | 'scatter'
+    | 'bubble'
+    | 'mixed';
   labelColumn?: string;
   valueColumn?: string;
   categoryColumn?: string;
@@ -151,10 +160,20 @@ export class GeminiService {
     if (!isValid) {
       throw new Error('Invalid response format from Gemini API');
     }
-    
+
     // Validate chart config if present
     if (chartConfig) {
-      const validChartTypes = ['pie', 'line', 'bar'];
+      const validChartTypes = [
+        'pie',
+        'line',
+        'bar',
+        'doughnut',
+        'polarArea',
+        'radar',
+        'scatter',
+        'bubble',
+        'mixed',
+      ];
       if (!validChartTypes.includes(chartConfig.type)) {
         throw new Error(`Invalid chart type: ${chartConfig.type}`);
       }
@@ -189,8 +208,13 @@ export class GeminiService {
     this.validateServiceState();
     try {
       const schemaInfo = schema.map(this.formatTableSchema).join('\n');
-      const prompt = generatePromptTemplate(schemaInfo, question, referenceText, 
-        chartType, errorMessage);
+      const prompt = generatePromptTemplate(
+        schemaInfo,
+        question,
+        referenceText,
+        chartType,
+        errorMessage
+      );
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);
       queryResult.isUnsafe ||= this.checkUnsafeOperations(queryResult.sql);
@@ -199,5 +223,4 @@ export class GeminiService {
       throw new Error(`Failed to generate SQL query: ${(error as Error).message}`);
     }
   }
-
 }
