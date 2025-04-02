@@ -1,5 +1,6 @@
 import { createPool, RowDataPacket } from 'mysql2/promise';
 import { Pool, PoolOptions } from 'mysql2/promise';
+import express from 'express';
 
 // Interfaces
 export type DatabaseConfig = StandardConfig | ConnectionStringConfig;
