@@ -325,6 +325,7 @@ Changes made:
                   >
                     None
                   </button>
+                  
                   <button
                     @click="selectedChartType = 'pie'"
                     type="button"
@@ -360,6 +361,90 @@ Changes made:
                     ]"
                   >
                     Bar Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'polarArea'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'polarArea'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    Polar Area Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'radar'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'radar'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    Radar Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'scatter'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'scatter'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    Scatter Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'doughnut'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'doughnut'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    Doughnut Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'bubble'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'bubble'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    Bubble Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'mixed'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'mixed'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    Mixed Chart
+                  </button>
+                  <button
+                    @click="selectedChartType = 'any'"
+                    type="button"
+                    :class="[
+                      'px-3 py-2 text-sm font-medium rounded-md transition-colors flex items-center gap-1',
+                      selectedChartType === 'any'
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+                    ]"
+                  >
+                    Any
                   </button>
                 </div>
               </div>
@@ -499,7 +584,7 @@ Changes made:
             </div>
 
             <!-- Chart Visualization -->
-            <div v-if="queryResults && generatedQuery.chartConfig" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
               <h3 class="text-lg font-medium text-gray-900 mb-4">
                 Data Visualization
               </h3>
@@ -995,8 +1080,8 @@ Changes made:
               case 'pie':
                 chartData = preparePieChartData(data, chartConfig);
                 options = {
-                  responsive: true,
-                  maintainAspectRatio: false,
+                  responsive: true, // Ensure chart is responsive
+                  maintainAspectRatio: true, // Maintain aspect ratio
                   plugins: {
                     legend: {
                       position: 'right',
@@ -1009,12 +1094,12 @@ Changes made:
                   }
                 };
                 break;
-                
+
               case 'line':
                 chartData = prepareLineChartData(data, chartConfig);
                 options = {
-                  responsive: true,
-                  maintainAspectRatio: false,
+                  responsive: true, // Ensure chart is responsive
+                  maintainAspectRatio: true, // Maintain aspect ratio
                   scales: {
                     y: {
                       beginAtZero: true
@@ -1022,18 +1107,82 @@ Changes made:
                   }
                 };
                 break;
-                
+
               case 'bar':
                 chartData = prepareBarChartData(data, chartConfig);
                 options = {
-                  responsive: true,
-                  maintainAspectRatio: false,
+                  responsive: true, // Ensure chart is responsive
+                  maintainAspectRatio: true, // Maintain aspect ratio
                   scales: {
                     x: {
                       stacked: true,
                     },
                     y: {
                       stacked: true,
+                      beginAtZero: true
+                    }
+                  }
+                };
+                break;
+
+              case 'doughnut':
+                chartData = preparePieChartData(data, chartConfig); // Reuse pie chart data preparation
+                options = {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'top',
+                    },
+                  }
+                };
+                break;
+
+              case 'polarArea':
+                chartData = preparePieChartData(data, chartConfig); // Reuse pie chart data preparation
+                options = {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'right',
+                    },
+                  }
+                };
+                break;
+
+              case 'radar':
+                chartData = prepareRadarChartData(data, chartConfig);
+                options = {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    r: {
+                      beginAtZero: true
+                    }
+                  }
+                };
+                break;
+
+              case 'scatter':
+                chartData = prepareScatterChartData(data, chartConfig);
+                options = chartData.options; // Use dynamically generated options
+                break;
+
+              // TODO: handle bubble chart errors
+              case 'bubble':
+                chartData = prepareBubbleChartData(data, chartConfig);
+                options = chartData.options; // Use dynamically generated options
+                break;
+
+              // TODO: handle mixed chart error
+              case 'mixed':
+                chartData = prepareMixedChartData(data, chartConfig);
+                options = {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
                       beginAtZero: true
                     }
                   }
@@ -1125,6 +1274,106 @@ Changes made:
               labels,
               datasets
             };
+          };
+
+          const prepareRadarChartData = (data, config) => {
+            const { labelColumn, seriesColumns } = config;
+            const labels = data.map(item => item[labelColumn]);
+            const datasets = seriesColumns.map((column, index) => {
+              const hue = (index * 137) % 360;
+              return {
+                label: column,
+                data: data.map(item => item[column]),
+                borderColor: `hsl(${hue}, 70%, 60%)`,
+                backgroundColor: `hsla(${hue}, 70%, 60%, 0.2)`,
+                fill: true,
+              };
+            });
+            return { labels, datasets };
+          };
+
+          const prepareScatterChartData = (data, config) => {
+            const xColumn = config['seriesColumns'][0] || 'x_value';
+            const yColumn = config['seriesColumns'][1] || 'y_value';
+
+            const datasets = [{
+              label: 'Scatter Dataset',
+              data: data.map(item => ({ x: item[xColumn], y: item[yColumn] })),
+              backgroundColor: 'rgba(75, 192, 192, 1)',
+            }];
+
+            const xValues = data.map(item => item[xColumn]).filter(value => typeof value === 'number');
+            const yValues = data.map(item => item[yColumn]).filter(value => typeof value === 'number');
+
+            const options = {
+              scales: {
+                x: {
+                  type: 'linear',
+                  position: 'bottom',
+                  min: Math.min(...xValues),
+                  max: Math.max(...xValues),
+                },
+                y: {
+                  min: Math.min(...yValues),
+                  max: Math.max(...yValues),
+                },
+              },
+            };
+
+            return { datasets, options };
+          };
+
+          const prepareBubbleChartData = (data, config) => {
+            const xColumn = config['seriesColumns'][0] || 'x_value';
+            const yColumn = config['seriesColumns'][1] || 'y_value';
+            const sizeColumn = config['seriesColumns'][2] || 'radius';
+            
+            const datasets = [{
+              label: 'Bubble Dataset',
+              data: data.map(item => ({
+                x: item[xColumn],
+                y: item[yColumn],
+                r: item[sizeColumn] || 5, // Default radius if sizeColumn is missing
+              })),
+              backgroundColor: 'rgba(255, 99, 132, 0.5)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+            }];
+
+            const xValues = data.map(item => item[xColumn]).filter(value => typeof value === 'number');
+            const yValues = data.map(item => item[yColumn]).filter(value => typeof value === 'number');
+
+            const options = {
+              scales: {
+                x: {
+                  type: 'linear',
+                  position: 'bottom',
+                  min: Math.min(...xValues),
+                  max: Math.max(...xValues),
+                },
+                y: {
+                  min: Math.min(...yValues),
+                  max: Math.max(...yValues),
+                },
+              },
+            };
+
+            return { datasets, options };
+          };
+
+          const prepareMixedChartData = (data, config) => {
+            const { datasetsConfig } = config;
+            const datasets = datasetsConfig.map((datasetConfig, index) => {
+              const hue = (index * 137) % 360;
+              return {
+                type: datasetConfig.type,
+                label: datasetConfig.label,
+                data: data.map(item => item[datasetConfig.column]),
+                backgroundColor: `hsla(${hue}, 70%, 60%, 0.5)`,
+                borderColor: `hsl(${hue}, 70%, 60%)`,
+                fill: datasetConfig.type === 'line',
+              };
+            });
+            return { labels: data.map(item => item[datasetsConfig[0].labelColumn]), datasets };
           };
 
           const watch = Vue.watch;

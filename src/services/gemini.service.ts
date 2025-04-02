@@ -77,7 +77,6 @@ export class GeminiService {
     // Bind methods to preserve this context
     this.formatColumnInfo = this.formatColumnInfo.bind(this);
     this.formatTableSchema = this.formatTableSchema.bind(this);
-    this.generatePrompt = this.generatePrompt.bind(this);
     this.generateQuery = this.generateQuery.bind(this);
   }
 
@@ -110,20 +109,6 @@ export class GeminiService {
     if (!question?.trim()) {
       throw new Error('Question is required');
     }
-  }
-
-  private generatePrompt(
-    schema: TableSchema[],
-    question: string,
-    referenceText?: string,
-    chartType?: string | undefined
-  ): string {
-    log('Generating prompt...', chartType);
-    this.validateInputs(schema, question);
-    const schemaInfo = schema.map(this.formatTableSchema).join('\n');
-    const referenceContext = getReferenceContext(referenceText);
-
-    return generatePromptTemplate(schemaInfo, question, referenceContext, chartType);
   }
 
   private async generateContent(prompt: string): Promise<string> {
@@ -164,6 +149,7 @@ export class GeminiService {
     // Validate chart config if present
     if (chartConfig) {
       const validChartTypes = [
+        'any',
         'pie',
         'line',
         'bar',
@@ -215,6 +201,7 @@ export class GeminiService {
         chartType,
         errorMessage
       );
+      log('Prompt:', prompt);
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);
       queryResult.isUnsafe ||= this.checkUnsafeOperations(queryResult.sql);

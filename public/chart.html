@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chart.js Samples</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      canvas {
+        margin: 20px auto;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="text-align: center;">Chart.js Samples</h1>
+
+    <!-- Area Chart -->
+    <canvas id="areaChart"></canvas>
+    <!-- Bar Chart -->
+    <canvas id="barChart"></canvas>
+    <!-- Bubble Chart -->
+    <canvas id="bubbleChart"></canvas>
+    <!-- Doughnut Chart -->
+    <canvas id="doughnutChart"></canvas>
+    <!-- Line Chart -->
+    <canvas id="lineChart"></canvas>
+    <!-- Mixed Chart -->
+    <canvas id="mixedChart"></canvas>
+    <!-- Polar Area Chart -->
+    <canvas id="polarAreaChart"></canvas>
+    <!-- Radar Chart -->
+    <canvas id="radarChart"></canvas>
+    <!-- Scatter Chart -->
+    <canvas id="scatterChart"></canvas>
+
+    <script>
+      // Area Chart
+      new Chart(document.getElementById('areaChart'), {
+        type: 'line',
+        data: {
+          labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October'],
+          datasets: [
+            {
+              label: 'Area Dataset',
+              data: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+              fill: true,
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+            },
+          ],
+        },
+      });
+
+      // Bar Chart
+      new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange', 'Pink', 'Brown', 'Grey', 'Black'],
+          datasets: [
+            {
+              label: 'Bar Dataset',
+              data: [12, 19, 3, 5, 2, 8, 15, 10, 7, 14],
+              backgroundColor: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(153, 102, 255, 0.2)',
+                'rgba(255, 159, 64, 0.2)',
+                'rgba(255, 192, 203, 0.2)',
+                'rgba(139, 69, 19, 0.2)',
+                'rgba(128, 128, 128, 0.2)',
+                'rgba(0, 0, 0, 0.2)',
+              ],
+              borderColor: [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+                'rgba(255, 159, 64, 1)',
+                'rgba(255, 192, 203, 1)',
+                'rgba(139, 69, 19, 1)',
+                'rgba(128, 128, 128, 1)',
+                'rgba(0, 0, 0, 1)',
+              ],
+              borderWidth: 1,
+            },
+          ],
+        },
+      });
+
+      // Bubble Chart
+      new Chart(document.getElementById('bubbleChart'), {
+        type: 'bubble',
+        data: {
+          datasets: [
+            {
+              label: 'Bubble Dataset',
+              data: [
+                { x: 10, y: 20, r: 15 },
+                { x: 15, y: 10, r: 10 },
+                { x: 20, y: 30, r: 20 },
+                { x: 25, y: 25, r: 25 },
+                { x: 30, y: 15, r: 30 },
+              ],
+              backgroundColor: 'rgba(255, 99, 132, 0.2)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+            },
+          ],
+        },
+      });
+
+      // Doughnut Chart
+      new Chart(document.getElementById('doughnutChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple'],
+          datasets: [
+            {
+              label: 'Doughnut Dataset',
+              data: [300, 50, 100, 200, 150],
+              backgroundColor: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(153, 102, 255, 0.2)',
+              ],
+              borderColor: [
+                'rgba(255, 99, 132, 1)',
+                'rgba(54, 162, 235, 1)',
+                'rgba(255, 206, 86, 1)',
+                'rgba(75, 192, 192, 1)',
+                'rgba(153, 102, 255, 1)',
+              ],
+            },
+          ],
+        },
+      });
+
+      // Line Chart
+      new Chart(document.getElementById('lineChart'), {
+        type: 'line',
+        data: {
+          labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October'],
+          datasets: [
+            {
+              label: 'Line Dataset 1',
+              data: [65, 59, 80, 81, 56, 75, 90, 100, 85, 95],
+              borderColor: 'rgba(75, 192, 192, 1)',
+              tension: 0.1,
+            },
+            {
+              label: 'Line Dataset 2',
+              data: [45, 49, 60, 71, 46, 65, 80, 90, 75, 85],
+              borderColor: 'rgba(255, 99, 132, 1)',
+              tension: 0.1,
+            },
+            {
+              label: 'Line Dataset 3',
+              data: [35, 39, 50, 61, 36, 55, 70, 80, 65, 75],
+              borderColor: 'rgba(54, 162, 235, 1)',
+              tension: 0.1,
+            },
+          ],
+        },
+      });
+
+      // Mixed Chart
+      new Chart(document.getElementById('mixedChart'), {
+        type: 'bar',
+        data: {
+          labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October'],
+          datasets: [
+            {
+              type: 'line',
+              label: 'Line Dataset',
+              data: [65, 59, 80, 81, 56, 75, 90, 100, 85, 95],
+              borderColor: 'rgba(75, 192, 192, 1)',
+              tension: 0.1,
+            },
+            {
+              type: 'bar',
+              label: 'Bar Dataset',
+              data: [28, 48, 40, 19, 86, 55, 70, 60, 50, 45],
+              backgroundColor: 'rgba(153, 102, 255, 0.2)',
+              borderColor: 'rgba(153, 102, 255, 1)',
+            },
+          ],
+        },
+      });
+
+      // Polar Area Chart
+      new Chart(document.getElementById('polarAreaChart'), {
+        type: 'polarArea',
+        data: {
+          labels: ['Red', 'Green', 'Yellow', 'Grey', 'Blue', 'Orange', 'Purple'],
+          datasets: [
+            {
+              label: 'Polar Area Dataset',
+              data: [11, 16, 7, 3, 14, 20, 25],
+              backgroundColor: [
+                'rgba(255, 99, 132, 0.2)',
+                'rgba(75, 192, 192, 0.2)',
+                'rgba(255, 206, 86, 0.2)',
+                'rgba(201, 203, 207, 0.2)',
+                'rgba(54, 162, 235, 0.2)',
+                'rgba(255, 159, 64, 0.2)',
+                'rgba(153, 102, 255, 0.2)',
+              ],
+            },
+          ],
+        },
+      });
+
+      // Radar Chart
+      new Chart(document.getElementById('radarChart'), {
+        type: 'radar',
+        data: {
+          labels: ['Eating', 'Drinking', 'Sleeping', 'Designing', 'Coding', 'Exercising', 'Reading'],
+          datasets: [
+            {
+              label: 'Radar Dataset',
+              data: [65, 59, 90, 81, 56, 70, 85],
+              backgroundColor: 'rgba(255, 99, 132, 0.2)',
+              borderColor: 'rgba(255, 99, 132, 1)',
+            },
+          ],
+        },
+      });
+
+      // Scatter Chart
+      new Chart(document.getElementById('scatterChart'), {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Scatter Dataset',
+              data: [
+                { x: -10, y: 0 },
+                { x: 0, y: 10 },
+                { x: 10, y: 5 },
+                { x: 0.5, y: 5.5 },
+                { x: 15, y: 20 },
+                { x: 20, y: 15 },
+              ],
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+            },
+          ],
+        },
+      });
+    </script>
+  </body>
+</html>

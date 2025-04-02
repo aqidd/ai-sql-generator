@@ -104,6 +104,24 @@ const handleQueryGeneration = async (
     const queryRequest = req.body as QueryRequest;
     validateQueryRequest(queryRequest);
     log('handle query generation', queryRequest.chartType);
+
+    // Validate chart type
+    const validChartTypes = [
+      'any',
+      'pie',
+      'line',
+      'bar',
+      'doughnut',
+      'polarArea',
+      'radar',
+      'scatter',
+      'bubble',
+      'mixed',
+    ];
+    if (queryRequest.chartType && !validChartTypes.includes(queryRequest.chartType)) {
+      throw new Error(`Invalid chart type: ${queryRequest.chartType}`);
+    }
+
     const queryResult = await geminiService.generateQuery(
       queryRequest.schema,
       queryRequest.question,

@@ -187,8 +187,8 @@ export const validateQueryRequest = (req: QueryRequest): void => {
   if (!req.schema || !req.question) {
     throw new Error('Schema and question are required');
   }
-  if (req.chartType && !['pie', 'line', 'bar'].includes(req.chartType)) {
-    throw new Error('Chart type must be one of: pie, line, bar');
+  if (req.chartType && !['any', 'pie', 'line', 'bar', 'doughnut', 'polarArea', 'radar', 'scatter', 'bubble', 'mixed'].includes(req.chartType)) {
+    throw new Error(`Chart type ${req.chartType} is not supported`);
   }
 };
 

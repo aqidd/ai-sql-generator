@@ -67,8 +67,87 @@ export const responseSchema = {
   nullable: false,
 };
 
-export const getPromptRules = (chartType: string | null = null): string => {
-  const chartExample = chartType ? getChartConfigExample(chartType) : '';
+// eslint-disable-next-line max-lines-per-function
+export const getChartDetails = (chartType?: string): { example: string; context: string } => {
+  // eslint-disable-next-line complexity
+  const chartExample: string = ((): string => {
+    switch (chartType) {
+      case 'pie':
+        return `{
+      "type": "pie",
+      "labelColumn": "category_name",
+      "valueColumn": "total_count"
+    }`;
+      case 'line':
+        return `{
+      "type": "line",
+      "timeColumn": "date",
+      "seriesColumns": ["sales", "profit"]
+    }`;
+      case 'bar':
+        return `{
+      "type": "bar",
+      "categoryColumn": "product_category",
+      "seriesColumns": ["revenue", "cost"]
+    }`;
+      case 'doughnut':
+        return `{
+      "type": "doughnut",
+      "labelColumn": "category_name",
+      "valueColumn": "total_count"
+    }`;
+      case 'polarArea':
+        return `{
+      "type": "polarArea",
+      "labelColumn": "category_name",
+      "valueColumn": "total_count"
+    }`;
+      case 'radar':
+        return `{
+      "type": "radar",
+      "seriesColumns": ["metric1", "metric2", "metric3"]
+    }`;
+      case 'scatter':
+        return `{
+      "type": "scatter",
+      "seriesColumns": ["x_value", "y_value"]
+    }`;
+      case 'bubble':
+        return `{
+      "type": "bubble",
+      "seriesColumns": ["x_value", "y_value", "radius"]
+    }`;
+      case 'mixed':
+        return `{
+      "type": "mixed",
+      "seriesColumns": ["bar_data", "line_data", "area_data"]
+    }`;
+      case 'any':
+        return `{
+      "type": "any", // LLM can choose any supported type [pie, line, bar, scatter, bubble, etc.]
+      "categoryColumn": "category_name", // Return category column for bar chart ( paired with series columns)
+      "labelColumn": "label", // Return label column for pie, doughnut and polar area chart (should be paired with value columns)
+      "valueColumn": "value" // Return value column for pie, doughnut and polar area chart (should be paired with label columns)
+      "seriesColumns": ["series1", "series2"] // Return series columns if applicable
+      "timeColumn": "timestamp" // Return time column for line chart (should be paired with series columns)
+    }`;
+      default:
+        return '{}';
+    }
+  })();
+
+  const chartContext = chartType
+    ? chartType === 'any'
+      ? 'The results should be visualized as a chart. Choose an appropriate chart type supported by Chart.js based on the query results.'
+      : `The results should be visualized as a ${chartType} chart. ` +
+        `Make sure the SQL query returns data in a format suitable for this chart type.`
+    : 'The results will not be visualized.';
+
+  return { example: chartExample, context: chartContext };
+};
+
+export const getPromptRules = (chartType: string | undefined): string => {
+  const { example: chartExample, context: chartContext } = getChartDetails(chartType);
 
   const format = chartType
     ? `FORMAT:
@@ -92,78 +171,12 @@ RULES:
 2. Double quotes in JSON
 3. isUnsafe=true for UPDATE/DELETE
 4. Efficient JOINs
-5. Valid SQL syntax${
-    chartType ? '\n6. Query results must be suitable for the requested chart type' : ''
-  }`;
-};
-
-// eslint-disable-next-line max-lines-per-function
-export const getChartConfigExample = (chartType: string): string => {
-  switch (chartType) {
-    case 'pie':
-      return `{
-    "type": "pie",
-    "labelColumn": "category_name",
-    "valueColumn": "total_count"
-  }`;
-    case 'line':
-      return `{
-    "type": "line",
-    "timeColumn": "date",
-    "seriesColumns": ["sales", "profit"]
-  }`;
-    case 'bar':
-      return `{
-    "type": "bar",
-    "categoryColumn": "product_category",
-    "seriesColumns": ["revenue", "cost"]
-  }`;
-    case 'doughnut':
-      return `{
-    "type": "doughnut",
-    "labelColumn": "category_name",
-    "valueColumn": "total_count"
-  }`;
-    case 'polarArea':
-      return `{
-    "type": "polarArea",
-    "labelColumn": "category_name",
-    "valueColumn": "total_count"
-  }`;
-    case 'radar':
-      return `{
-    "type": "radar",
-    "seriesColumns": ["metric1", "metric2", "metric3"]
-  }`;
-    case 'scatter':
-      return `{
-    "type": "scatter",
-    "seriesColumns": ["x_value", "y_value"]
-  }`;
-    case 'bubble':
-      return `{
-    "type": "bubble",
-    "seriesColumns": ["x_value", "y_value", "radius"]
-  }`;
-    case 'mixed':
-      return `{
-    "type": "mixed",
-    "seriesColumns": ["bar_data", "line_data", "area_data"]
-  }`;
-    default:
-      return '{}';
-  }
+5. Valid SQL syntax
+${chartType ? `\n6. Query results must be suitable for the requested chart type. ${chartContext}` : ''}`;
 };
 
 export const getReferenceContext = (referenceText?: string): string => {
   return referenceText ? `REFERENCE DOCUMENT:\n${referenceText}\n\n` : '';
-};
-
-export const generateChartContext = (chartType?: string): string => {
-  return chartType
-    ? `The results should be visualized as a ${chartType} chart. ` +
-        `Make sure the SQL query returns data in a format suitable for this chart type.`
-    : 'The results will not be visualized.';
 };
 
 export const generatePromptTemplate = (
@@ -173,7 +186,6 @@ export const generatePromptTemplate = (
   chartType?: string,
   errorMessage?: string
 ): string => {
-  const chartContext = generateChartContext(chartType);
   const rules = getPromptRules(chartType);
 
   return `You are a Data Analyst with MySQL expertise.
@@ -186,42 +198,12 @@ export const generatePromptTemplate = (
   Database Schema:
   ${schemaInfo}
 
-  ${referenceContext}
+  Additional Context: ${referenceContext}
 
-  User Question: ${question} ${chartContext}
+  User Question: ${question} 
 
   ${rules}
   
-  The previous attempt on generating SQL query resulting in this error ${errorMessage}.
+  The previous attempt on generating SQL query resulting in this error: ${errorMessage}.
   Avoid getting into the same error again.`;
-};
-
-export const generateErrorFixPromptTemplate = (
-  schemaInfo: string,
-  question: string,
-  errorMessage: string,
-  chartContext: string
-): string => {
-  return `You are a MySQL expert. Given the following database schema and user question, 
-  generate a corrected SQL query that fixes the error from a previous attempt.
-
-  Database Schema:
-  ${schemaInfo}
-
-  User Question: ${question}
-  ${chartContext}
-
-  Previous Error: ${errorMessage}
-
-  Please generate a valid SQL query that:
-  1. Fixes the error from the previous attempt
-  2. Correctly answers the user's question
-  3. Uses only the tables and columns defined in the schema
-  4. Returns the most relevant data
-  5. ${chartContext}
-
-  Respond with a JSON object containing:
-  - sql: The corrected SQL query
-  - explanation: A brief explanation of what the query does and how it fixes the error
-  - isUnsafe: true if the query modifies data (UPDATE, DELETE, etc.)`;
 };
