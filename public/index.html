@@ -14,8 +14,6 @@ Changes made:
     <title>Database Schema Viewer</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- TODO remove lucide -->
-    <!-- <script src="https://unpkg.com/lucide@latest"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-4589K7P5CK"></script>
     <script>
@@ -38,9 +36,6 @@ Changes made:
           role="alert"
         >
           <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>
-            </div>
             <div class="ml-3">
               <h3 class="text-sm font-medium text-red-800">Connection Error</h3>
               <div class="mt-1 text-sm text-red-700">{{ error }}</div>
@@ -51,7 +46,7 @@ Changes made:
                   @click="error = ''"
                   class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
-                  <i data-lucide="x" class="w-4 h-4"></i>
+                  ✕
                 </button>
               </div>
             </div>
@@ -65,9 +60,6 @@ Changes made:
           role="alert"
         >
           <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <i data-lucide="check-circle" class="w-5 h-5 text-green-500"></i>
-            </div>
             <div class="ml-3">
               <h3 class="text-sm font-medium text-green-800">Success</h3>
               <div class="mt-1 text-sm text-green-700">{{ successMessage }}</div>
@@ -78,7 +70,7 @@ Changes made:
                   @click="successMessage = ''"
                   class="inline-flex rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                 >
-                  <i data-lucide="x" class="w-4 h-4"></i>
+                  ✕
                 </button>
               </div>
             </div>
@@ -92,9 +84,6 @@ Changes made:
           role="alert"
         >
           <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <i data-lucide="alert-circle" class="w-5 h-5 text-red-500"></i>
-            </div>
             <div class="ml-3">
               <h3 class="text-sm font-medium text-red-800">Error</h3>
               <div class="mt-1 text-sm text-red-700">{{ errorMessage }}</div>
@@ -105,7 +94,7 @@ Changes made:
                   @click="errorMessage = ''"
                   class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
-                  <i data-lucide="x" class="w-4 h-4"></i>
+                  ✕
                 </button>
               </div>
             </div>
@@ -114,10 +103,7 @@ Changes made:
 
         <!-- Connection Form -->
         <div v-if="!connected" class="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h1 class="text-2xl font-bold mb-6 flex items-center gap-2">
-            <i data-lucide="database" class="w-6 h-6"></i>
-            Database Connection
-          </h1>
+          <h1 class="text-2xl font-bold mb-6">Database Connection</h1>
           <!-- Connection Type Toggle -->
           <div class="mb-6">
             <div class="flex gap-4 p-1 bg-gray-100 rounded-lg w-fit">
@@ -131,7 +117,6 @@ Changes made:
                                     : 'text-gray-600 hover:text-gray-900'
                             ]"
               >
-                <i data-lucide="settings-2" class="w-4 h-4 inline-block mr-1"></i>
                 Standard
               </button>
               <button
@@ -144,7 +129,6 @@ Changes made:
                                     : 'text-gray-600 hover:text-gray-900'
                             ]"
               >
-                <i data-lucide="terminal" class="w-4 h-4 inline-block mr-1"></i>
                 Connection String
               </button>
             </div>
@@ -211,7 +195,6 @@ Changes made:
                 />
               </div>
               <p class="text-sm text-gray-500">
-                <i data-lucide="info" class="w-4 h-4 inline-block mr-1"></i>
                 Format: mysql://username:password@host:port/database
               </p>
             </div>
@@ -221,7 +204,6 @@ Changes made:
                 type="button"
                 class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
-                <i data-lucide="database" class="w-4 h-4 mr-2"></i>
                 Test with Dummy DB
               </button>
               <button
@@ -253,7 +235,6 @@ Changes made:
                   Connecting...
                 </template>
                 <template v-else>
-                  <i data-lucide="plug" class="w-4 h-4 mr-2"></i>
                   Connect
                 </template>
               </button>
@@ -301,10 +282,7 @@ Changes made:
         <div v-else class="space-y-6">
           <!-- Query Section -->
           <div class="bg-white rounded-lg shadow-lg p-8 space-y-6">
-            <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-3">
-              <i data-lucide="search" class="w-6 h-6"></i>
-              AI Query Assistant
-            </h2>
+            <h2 class="text-xl font-semibold text-gray-900">AI Query Assistant</h2>
             <div class="space-y-6">
               <!-- Upload Reference Document -->
               <div class="space-y-2">
@@ -345,7 +323,6 @@ Changes made:
                         : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
                     ]"
                   >
-                    <i data-lucide="table" class="w-4 h-4"></i>
                     None
                   </button>
                   <button
@@ -358,7 +335,6 @@ Changes made:
                         : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
                     ]"
                   >
-                    <i data-lucide="pie-chart" class="w-4 h-4"></i>
                     Pie Chart
                   </button>
                   <button
@@ -371,7 +347,6 @@ Changes made:
                         : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
                     ]"
                   >
-                    <i data-lucide="line-chart" class="w-4 h-4"></i>
                     Line Chart
                   </button>
                   <button
@@ -384,7 +359,6 @@ Changes made:
                         : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
                     ]"
                   >
-                    <i data-lucide="bar-chart" class="w-4 h-4"></i>
                     Bar Chart
                   </button>
                 </div>
@@ -395,7 +369,6 @@ Changes made:
                 class="mt-6 bg-gray-50 border-l-4 border-gray-500 p-4 rounded-md"
               >
                 <div class="flex items-start gap-4">
-                  <i data-lucide="file-text" class="w-6 h-6 text-gray-500"></i>
                   <div class="flex-1">
                     <h3 class="text-sm font-medium text-gray-800">Uploaded Document Preview</h3>
                     <pre
@@ -438,7 +411,6 @@ Changes made:
                     Generating Query...
                   </template>
                   <template v-else>
-                    <i data-lucide="wand-2" class="w-5 h-5 mr-2"></i>
                     Generate Query
                   </template>
                 </button>
@@ -449,14 +421,12 @@ Changes made:
             <div v-if="generatedQuery" class="space-y-6">
               <div class="rounded-md bg-gray-50 p-6">
                 <div class="flex items-start gap-4">
-                  <i data-lucide="code" class="h-6 w-6 text-gray-400"></i>
                   <div class="flex-1">
                     <pre class="text-sm text-gray-600 whitespace-pre-wrap font-mono">
 {{ generatedQuery.sql }}</pre
                     >
                     <p class="mt-2 text-sm text-gray-500">{{ generatedQuery.explanation }}</p>
                     <div v-if="generatedQuery.isUnsafe" class="mt-2 flex items-center gap-2">
-                      <i data-lucide="alert-triangle" class="h-5 w-5 text-yellow-400"></i>
                       <p class="text-sm text-yellow-700">
                         This query contains data-modifying operations (UPDATE/DELETE). Please review
                         carefully.
@@ -495,7 +465,6 @@ Changes made:
                     Executing...
                   </template>
                   <template v-else>
-                    <i data-lucide="play" class="w-5 h-5 mr-2"></i>
                     Execute Query
                   </template>
                 </button>
@@ -508,7 +477,6 @@ Changes made:
               class="mt-6 bg-yellow-50 border-l-4 border-yellow-500 p-6 rounded-md"
             >
               <div class="flex items-start gap-4">
-                <i data-lucide="alert-triangle" class="w-6 h-6 text-yellow-500"></i>
                 <div class="flex-1">
                   <h3 class="text-sm font-medium text-yellow-800">Query Error</h3>
                   <p class="mt-2 text-sm text-yellow-700">{{ queryError }}</p>
@@ -517,7 +485,6 @@ Changes made:
                       @click="regenerateQuery"
                       class="inline-flex items-center px-4 py-2 border border-yellow-600 rounded-md text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50"
                     >
-                      <i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i>
                       Fix and Regenerate Query
                     </button>
                     <button
@@ -533,8 +500,7 @@ Changes made:
 
             <!-- Chart Visualization -->
             <div v-if="queryResults && generatedQuery.chartConfig" class="mt-6 bg-white p-6 rounded-lg shadow-lg">
-              <h3 class="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-                <i :data-lucide="getChartIcon(generatedQuery.chartConfig.type)" class="w-5 h-5"></i>
+              <h3 class="text-lg font-medium text-gray-900 mb-4">
                 Data Visualization
               </h3>
               <div class="h-80 relative">
@@ -549,7 +515,6 @@ Changes made:
                 class="mb-6 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-md"
               >
                 <div class="flex items-start gap-4">
-                  <i data-lucide="check-circle" class="w-6 h-6 text-blue-500"></i>
                   <div>
                     <h3 class="text-sm font-medium text-blue-800">
                       Query Regenerated Successfully
@@ -601,15 +566,11 @@ Changes made:
 
           <!-- Schema Display -->
           <div class="flex justify-between items-center">
-            <h1 class="text-2xl font-bold flex items-center gap-2">
-              <i data-lucide="database" class="w-6 h-6"></i>
-              Schema: {{ getDatabaseName() }}
-            </h1>
+            <h1 class="text-2xl font-bold">Schema: {{ getDatabaseName() }}</h1>
             <button
               @click="disconnect"
               class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <i data-lucide="log-out" class="w-4 h-4 mr-2"></i>
               Disconnect
             </button>
           </div>
@@ -620,10 +581,7 @@ Changes made:
             class="bg-white rounded-lg shadow-lg overflow-hidden mb-6"
           >
             <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <h3 class="text-lg font-medium text-gray-900 flex items-center gap-2">
-                <i data-lucide="table" class="w-5 h-5"></i>
-                {{ table.tableName }}
-              </h3>
+              <h3 class="text-lg font-medium text-gray-900">{{ table.tableName }}</h3>
             </div>
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200">
@@ -689,7 +647,6 @@ Changes made:
             <!-- Sample Data Section -->
             <div v-if="table.sampleData" class="px-4 py-3 bg-blue-50 border-t border-blue-200">
               <div class="flex items-center gap-2 mb-2">
-                <i data-lucide="database" class="w-4 h-4 text-blue-600"></i>
                 <h4 class="text-sm font-medium text-blue-800">Sample Data</h4>
               </div>
               <div class="overflow-x-auto bg-white rounded-md border border-blue-100">
@@ -1216,9 +1173,6 @@ Changes made:
           };
         },
       }).mount('#app');
-
-      // Initialize Lucide icons
-      // lucide.createIcons();
     </script>
   </body>
 </html>

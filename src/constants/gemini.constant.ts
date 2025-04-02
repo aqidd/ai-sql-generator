@@ -1,4 +1,4 @@
-import { error } from "console";
+
 
 export const responseSchema = {
   type: 'object',
