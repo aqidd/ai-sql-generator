@@ -237,11 +237,13 @@ const analyzeError = (errorMessage: string): string => {
     errorAnalysis = `The previous query used a 'GROUP BY' clause incorrectly. Ensure that all non-aggregated columns in the SELECT statement are also included in the GROUP BY clause. If you are trying to filter after grouping, use a 'HAVING' clause instead of 'WHERE'.`;
   } else if (errorMessage.toLowerCase().includes("incorrect number of arguments")) {
       errorAnalysis = `The previous query used a function or operator with an incorrect number of arguments. Check the documentation for the specific function you're using to ensure you're passing the correct number and type of parameters.`;
+  } else if (errorMessage.toLowerCase().includes("does not exist")) {
+    errorAnalysis = `The previous query used a function or column that does not exist in the database or is not valid in this context.  Carefully review the database schema to ensure that the function or column is available and spelled correctly. Pay close attention to case sensitivity, the function might have different casing in schema definition. Also verify if you are using column with correct table.`;
   } else {
-    errorAnalysis = `The previous query resulted in an error: "${errorMessage}".  Please analyze the error message carefully and identify the cause of the problem. Ensure all column and table names used in query are present in schema. Use given reference document for additional context.`;
+    errorAnalysis = `The previous query generated resulted in an error: "${errorMessage}".  Please analyze the error message carefully and identify the cause of the problem. Ensure all column and table names used in query are present in schema. Use given reference document for additional context.`;
   }
 
-  errorAnalysis += " Based on the error, revise the query to correct the issue. Do not repeat the same mistake."; // IMPORTANT!
+  errorAnalysis += " Based on the previous error, make sure the query generated have no issue. Do not repeat the same mistake."; // IMPORTANT!
   return errorAnalysis;
 }
 
