@@ -1051,16 +1051,6 @@ Changes made:
               loading.value = false;
             }
           };
-
-          // Chart rendering functions
-          const getChartIcon = (chartType) => {
-            switch (chartType) {
-              case 'pie': return 'pie-chart';
-              case 'line': return 'line-chart';
-              case 'bar': return 'bar-chart';
-              default: return 'chart';
-            }
-          };
           
           const renderChart = (data, chartConfig) => {
             // Destroy previous chart if it exists
@@ -1178,6 +1168,7 @@ Changes made:
               // TODO: handle mixed chart error
               case 'mixed':
                 chartData = prepareMixedChartData(data, chartConfig);
+                console.log(chartData);
                 options = {
                   responsive: true,
                   maintainAspectRatio: false,
@@ -1235,7 +1226,6 @@ Changes made:
             const labels = data.map(item => item[timeColumn]);
             
             // Generate datasets for each series
-            console.log(seriesColumns)
             const datasets = seriesColumns.map((column, index) => {
               const hue = (index * 137) % 360;
               return {
@@ -1361,19 +1351,19 @@ Changes made:
           };
 
           const prepareMixedChartData = (data, config) => {
-            const { datasetsConfig } = config;
-            const datasets = datasetsConfig.map((datasetConfig, index) => {
+            const { labelColumn, charts } = config;
+            const datasets = charts.map((chart, index) => {
               const hue = (index * 137) % 360;
               return {
-                type: datasetConfig.type,
-                label: datasetConfig.label,
-                data: data.map(item => item[datasetConfig.column]),
+                type: chart.type,
+                label: chart.label,
+                data: data.map(item => item[chart.column]),
                 backgroundColor: `hsla(${hue}, 70%, 60%, 0.5)`,
                 borderColor: `hsl(${hue}, 70%, 60%)`,
-                fill: datasetConfig.type === 'line',
+                fill: chart.type === 'line',
               };
             });
-            return { labels: data.map(item => item[datasetsConfig[0].labelColumn]), datasets };
+            return { labels: data.map(item => item[labelColumn]), datasets };
           };
 
           const watch = Vue.watch;
@@ -1410,7 +1400,6 @@ Changes made:
             useDummyDB, // Add useDummyDB variable
             selectedChartType,
             chartCanvas,
-            getChartIcon,
             connectToDatabase,
             disconnect,
             getDatabaseName,

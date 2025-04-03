@@ -120,15 +120,29 @@ export const getChartDetails = (chartType?: string): { example: string; context:
       case 'mixed':
         return `{
       "type": "mixed",
-      "seriesColumns": ["bar_data", "line_data", "area_data"]
+      // LLM should return multiple chart types. 
+      // For example, a line chart and a bar chart in the same dataset
+      "labelColumn": "product_name",
+      "charts": [
+        {
+          "type": "line",
+          "label": "Line Dataset",
+          "column": "sales" // number datatype
+        },
+        {
+          "type": "bar",
+          "label": "Bar Dataset",
+          "column": "profit" // number datatype
+        }
+      ],
     }`;
       case 'any':
         return `{
       "type": "any", // LLM can choose any supported type [pie, line, bar, scatter, bubble, etc.]
       "categoryColumn": "category_name", // Return category column for bar chart ( paired with series columns)
       "labelColumn": "label", // Return label column for pie, doughnut and polar area chart (should be paired with value columns)
-      "valueColumn": "value" // Return value column for pie, doughnut and polar area chart (should be paired with label columns)
-      "seriesColumns": ["series1", "series2"] // Return series columns if applicable
+      "valueColumn": "value" // Return value column for pie, doughnut and polar area chart (number as the datatype and paired with label columns)
+      "seriesColumns": ["series1", "series2"] // Return series columns if applicable (each column should have data type number, not string/enum)
       "timeColumn": "timestamp" // Return time column for line chart (should be paired with series columns)
     }`;
       default:
@@ -175,7 +189,7 @@ RULES:
 ${chartType ? `\n6. Query results must be suitable for the requested chart type. ${chartContext}` : ''}`;
 };
 
-export const getReferenceContext = (referenceText?: string): string => {
+const getReferenceContext = (referenceText?: string): string => {
   return referenceText ? `REFERENCE DOCUMENT:\n${referenceText}\n\n` : '';
 };
 
@@ -198,12 +212,12 @@ export const generatePromptTemplate = (
   Database Schema:
   ${schemaInfo}
 
-  Additional Context: ${referenceContext}
+  ${getReferenceContext(referenceContext)}
 
   User Question: ${question} 
 
   ${rules}
   
   The previous attempt on generating SQL query resulting in this error: ${errorMessage}.
-  Avoid getting into the same error again.`;
+  Fix query error and avoid getting into the same error again.`;
 };

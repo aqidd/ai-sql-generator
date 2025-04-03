@@ -7,12 +7,11 @@
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { log } from 'console';
 import {
   responseSchema,
-  getReferenceContext,
   generatePromptTemplate,
 } from '../constants/prompt.constant';
+import { log } from 'node:console';
 
 interface ChartConfig {
   type:
@@ -190,7 +189,6 @@ export class GeminiService {
     referenceText?: string,
     chartType?: string | undefined
   ): Promise<QueryResult> {
-    log('Generating query...', chartType);
     this.validateServiceState();
     try {
       const schemaInfo = schema.map(this.formatTableSchema).join('\n');
@@ -201,7 +199,7 @@ export class GeminiService {
         chartType,
         errorMessage
       );
-      log('Prompt:', prompt);
+      log('Generated prompt:', prompt);
       const response = await this.generateContent(prompt);
       const queryResult = await this.parseAndValidateResponse(response);
       queryResult.isUnsafe ||= this.checkUnsafeOperations(queryResult.sql);

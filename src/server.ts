@@ -22,7 +22,6 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GeminiService } from './services/gemini.service';
 import winston from 'winston';
-import { log } from 'console';
 import { extractTextFromFile } from './utils/document-processor'; // Utility for text extraction
 import fs from 'fs';
 
@@ -103,7 +102,6 @@ const handleQueryGeneration = async (
   try {
     const queryRequest = req.body as QueryRequest;
     validateQueryRequest(queryRequest);
-    log('handle query generation', queryRequest.chartType);
 
     // Validate chart type
     const validChartTypes = [
@@ -129,6 +127,7 @@ const handleQueryGeneration = async (
       queryRequest.referenceText || req.app.locals.referenceText,
       queryRequest.chartType
     );
+    logger.info(`Generated result: ${JSON.stringify(queryResult)}`);
     res.json(queryResult);
   } catch (error: unknown) {
     const status = error instanceof Error && error.message.includes('required') ? 400 : 500;
@@ -156,6 +155,7 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
 
     pool = await initializeDatabasePool(config);
     const results = await pool.query(query);
+    logger.info(`Query executed successfully: ${JSON.stringify(results)}`);
     res.json({ success: true, results: results[0] });
   } catch (error: unknown) {
     logger.error(
