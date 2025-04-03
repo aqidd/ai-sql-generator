@@ -978,7 +978,9 @@ Changes made:
                   schema: schema.value, // This now includes sample data
                   question: question.value,
                   referenceText: referenceText.value || undefined,
-                  error: queryError.value || undefined,
+                  error: queryError.value 
+                    ? `Previous query "${generatedQuery.value?.sql}" resulted in an error: ${queryError.value}`
+                    : undefined,
                   useDummyDB: useDummyDB.value, // Include useDummyDB
                   chartType: selectedChartType.value, // Include chart type
                 }),
