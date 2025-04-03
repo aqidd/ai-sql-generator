@@ -115,7 +115,7 @@ export const getChartDetails = (chartType?: string): { example: string; context:
       case 'bubble':
         return `{
       "type": "bubble",
-      "seriesColumns": ["x_value", "y_value", "radius"]
+      "seriesColumns": ["x_value", "y_value", "radius"] // must be number datatypes
     }`;
       case 'mixed':
         return `{
