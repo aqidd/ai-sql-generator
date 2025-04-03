@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 export const responseSchema = {
   type: 'object',
   description: 'SQL query generation response format',
@@ -138,7 +139,7 @@ export const getChartDetails = (chartType?: string): { example: string; context:
     }`;
       case 'any':
         return `{
-      "type": "any", // LLM can choose any supported type [pie, line, bar, scatter, bubble, etc.]
+      "type": "any", // LLM can choose any supported type [pie, line, bar, scatter, bubble, radar, mixed, etc.]
       "categoryColumn": "category_name", // Return category column for bar chart ( paired with series columns)
       "labelColumn": "label", // Return label column for pie, doughnut and polar area chart (should be paired with value columns)
       "valueColumn": "value" // Return value column for pie, doughnut and polar area chart (number as the datatype and paired with label columns)
@@ -218,6 +219,29 @@ export const generatePromptTemplate = (
 
   ${rules}
   
-  The previous attempt on generating SQL query resulting in this error: ${errorMessage}.
-  Fix query error and avoid getting into the same error again.`;
+  ${errorMessage ? analyzeError(errorMessage) : ""}`;
 };
+
+const analyzeError = (errorMessage: string): string => {
+  let errorAnalysis;
+  // Analyze the errorMessage to categorize the problem and suggest a fix.
+  if (errorMessage.toLowerCase().includes("syntax error")) {
+    errorAnalysis = `The previous query had a syntax error. Carefully check for typos, incorrect use of keywords (e.g., SELECT, FROM, WHERE, JOIN), and missing semicolons. Double check all column and table names used in query are present in schema.`;
+  } else if (errorMessage.toLowerCase().includes("ambiguous column")) {
+    errorAnalysis = `The previous query had an ambiguous column name. This means the same column name exists in multiple tables you are joining.  Explicitly specify the table name when referencing the column (e.g., table1.columnName).`;
+  } else if (errorMessage.toLowerCase().includes("invalid column")) {
+    errorAnalysis = `The previous query used an invalid column name. Double-check the schema to make sure that the column exists and is spelled correctly. Also verify the correct table name.`;
+  } else if (errorMessage.toLowerCase().includes("table not found")) {
+    errorAnalysis = `The previous query used a table name that does not exist. Double-check the schema to make sure that the table exists and is spelled correctly.`;
+  } else if (errorMessage.toLowerCase().includes("group by")) {
+    errorAnalysis = `The previous query used a 'GROUP BY' clause incorrectly. Ensure that all non-aggregated columns in the SELECT statement are also included in the GROUP BY clause. If you are trying to filter after grouping, use a 'HAVING' clause instead of 'WHERE'.`;
+  } else if (errorMessage.toLowerCase().includes("incorrect number of arguments")) {
+      errorAnalysis = `The previous query used a function or operator with an incorrect number of arguments. Check the documentation for the specific function you're using to ensure you're passing the correct number and type of parameters.`;
+  } else {
+    errorAnalysis = `The previous query resulted in an error: "${errorMessage}".  Please analyze the error message carefully and identify the cause of the problem. Ensure all column and table names used in query are present in schema. Use given reference document for additional context.`;
+  }
+
+  errorAnalysis += " Based on the error, revise the query to correct the issue. Do not repeat the same mistake."; // IMPORTANT!
+  return errorAnalysis;
+}
+
