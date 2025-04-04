@@ -1,19 +1,11 @@
-# Environment variables
-.env
-
-# Dependencies
+/nbproject/
+/.idea/*
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+*.sublime-workspace
+*.sublime-project
 node_modules/
-
-# Build output
-dist/
-build/
-
-# IDE files
-.vscode/
-.idea/
-
-# Logs
-*.log
-npm-debug.log*
-
-uploads
+bin/
+obj/
+.vs/
