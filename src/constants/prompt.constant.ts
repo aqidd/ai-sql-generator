@@ -185,9 +185,15 @@ RULES:
 1. No markdown/code blocks
 2. Double quotes in JSON
 3. isUnsafe=true for UPDATE/DELETE
-4. Efficient JOINs
+4. Efficient JOINs. Prioritize joins that provide a richer context for the analysis.
 5. Valid SQL syntax
-${chartType ? `\n6. Query results must be suitable for the requested chart type. ${chartContext}` : ''}`;
+6. Focus on extracting meaningful insights. Instead of simply selecting data, look for patterns, correlations, and trends that address the user's question in a comprehensive way.
+7. Incorporate multiple metrics and aggregations. Aim to include at least two different metrics in the query to enable a more nuanced analysis (e.g., counts, averages, sums, ratios). Use aggregations (e.g., SUM, AVG, COUNT, MIN, MAX) to summarize data and reveal trends.
+8. Consider potential confounding factors. Think about other tables or columns that could influence the relationship being explored. Include these factors in the query to control for their effects or to analyze their impact. For example, if looking at track listens and release dates, consider user subscription levels or artist popularity.
+9. Be mindful of data granularity. Determine the appropriate level of granularity for the analysis (e.g., daily, weekly, monthly). Choose the granularity that best reveals the underlying trends and patterns.
+10. The explanation should highlight the assumptions and limitations of the query. It should mention any potential biases or sources of error that could affect the results.
+11. Provide a clear hypothesis or interpretation of the potential correlation being investigated. What do you expect to see, and why?
+${chartType ? `\n12. Query results must be suitable for the requested chart type. ${chartContext}` : ''}`;
 };
 
 const getReferenceContext = (referenceText?: string): string => {
