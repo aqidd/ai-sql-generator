@@ -3,107 +3,135 @@ Changes made:
 2025-03-16: Created frontend with Vue.js for database connection and schema display
 2025-03-16: Added support for connection string and port configuration
 2025-03-16: Improved error handling with UI alerts and loading states
-2025-03-16: Fixed schema response handling and query generation
 2025-03-28: Added sample data display for each table
+2025-04-05: Major UI/UX improvements - modern design, better spacing, loading states
+2025-04-10: Improved schema visualization with better organization, interactive elements and visual hierarchy
 -->
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Database Schema Viewer</title>
+    <title>Database AI Assistant</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-4589K7P5CK"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              primary: {
+                50: '#f0f9ff',
+                100: '#e0f2fe',
+                500: '#3b82f6',
+                600: '#2563eb',
+              },
+            },
+          }
+        }
       }
-      gtag('js', new Date());
-
-      gtag('config', 'G-4589K7P5CK');
     </script>
   </head>
-  <body class="bg-gray-50">
+  <body class="bg-gray-50 font-sans">
     <div id="app" class="container mx-auto px-4 py-8">
-      <div class="max-w-4xl mx-auto">
-        <!-- Error Alert -->
-        <div
-          v-if="error"
-          class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 relative"
-          role="alert"
-        >
-          <div class="flex items-start">
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">Connection Error</h3>
-              <div class="mt-1 text-sm text-red-700">{{ error }}</div>
-            </div>
-            <div class="ml-auto pl-3">
-              <div class="-mx-1.5 -my-1.5">
-                <button
-                  @click="error = ''"
-                  class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  ✕
-                </button>
+      <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">Database AI Assistant</h1>
+          <p class="text-gray-600">Connect, explore and query your database with AI</p>
+        </header>
+
+        <!-- Alerts -->
+        <div class="space-y-4 mb-6">
+          <!-- Error Alert -->
+          <div
+            v-if="error"
+            class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 relative"
+            role="alert"
+          >
+            <div class="flex items-start">
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">Connection Error</h3>
+                <div class="mt-1 text-sm text-red-700">{{ error }}</div>
+              </div>
+              <div class="ml-auto pl-3">
+                <div class="-mx-1.5 -my-1.5">
+                  <button
+                    @click="error = ''"
+                    class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Success Alert -->
-        <div
-          v-if="successMessage"
-          class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 relative"
-          role="alert"
-        >
-          <div class="flex items-start">
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-green-800">Success</h3>
-              <div class="mt-1 text-sm text-green-700">{{ successMessage }}</div>
-            </div>
-            <div class="ml-auto pl-3">
-              <div class="-mx-1.5 -my-1.5">
-                <button
-                  @click="successMessage = ''"
-                  class="inline-flex rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  ✕
-                </button>
+          <!-- Success Alert -->
+          <div
+            v-if="successMessage"
+            class="mb-4 bg-green-50 border-l-4 border-green-500 p-4 relative"
+            role="alert"
+          >
+            <div class="flex items-start">
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-green-800">Success</h3>
+                <div class="mt-1 text-sm text-green-700">{{ successMessage }}</div>
+              </div>
+              <div class="ml-auto pl-3">
+                <div class="-mx-1.5 -my-1.5">
+                  <button
+                    @click="successMessage = ''"
+                    class="inline-flex rounded-md p-1.5 text-green-500 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Error Alert -->
-        <div
-          v-if="errorMessage"
-          class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 relative"
-          role="alert"
-        >
-          <div class="flex items-start">
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">Error</h3>
-              <div class="mt-1 text-sm text-red-700">{{ errorMessage }}</div>
-            </div>
-            <div class="ml-auto pl-3">
-              <div class="-mx-1.5 -my-1.5">
-                <button
-                  @click="errorMessage = ''"
-                  class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  ✕
-                </button>
+          <!-- Error Alert -->
+          <div
+            v-if="errorMessage"
+            class="mb-4 bg-red-50 border-l-4 border-red-500 p-4 relative"
+            role="alert"
+          >
+            <div class="flex items-start">
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">Error</h3>
+                <div class="mt-1 text-sm text-red-700">{{ errorMessage }}</div>
+              </div>
+              <div class="ml-auto pl-3">
+                <div class="-mx-1.5 -my-1.5">
+                  <button
+                    @click="errorMessage = ''"
+                    class="inline-flex rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Connection Form -->
-        <div v-if="!connected" class="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <h1 class="text-2xl font-bold mb-6">Database Connection</h1>
+        <div v-if="!connected" class="bg-white rounded-xl shadow-sm p-8 mb-8 border border-gray-200">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="p-2 rounded-full bg-primary-100 text-primary-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                <path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 9-9 9 9 0 0 1 9 9z"></path>
+                <path d="M12 7v5l3 3"></path>
+              </svg>
+            </div>
+            <h2 class="text-xl font-semibold text-gray-900">Database Connection</h2>
+          </div>
           <!-- Connection Type Toggle -->
           <div class="mb-6">
             <div class="flex gap-4 p-1 bg-gray-100 rounded-lg w-fit">
@@ -281,8 +309,28 @@ Changes made:
         <!-- Schema Display and Query Interface -->
         <div v-else class="space-y-6">
           <!-- Query Section -->
-          <div class="bg-white rounded-lg shadow-lg p-8 space-y-6">
-            <h2 class="text-xl font-semibold text-gray-900">AI Query Assistant</h2>
+          <div class="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="p-2 rounded-full bg-primary-100 text-primary-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+                  <path d="M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"></path>
+                  <path d="M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path>
+                  <path d="M12 2v2"></path>
+                  <path d="M12 22v-2"></path>
+                  <path d="m17 20.66-1-1.73"></path>
+                  <path d="M11 10.27 7 3.34"></path>
+                  <path d="m20.66 17-1.73-1"></path>
+                  <path d="m3.34 7 1.73 1"></path>
+                  <path d="M14 12h8"></path>
+                  <path d="M2 12h2"></path>
+                  <path d="m20.66 7-1.73 1"></path>
+                  <path d="m3.34 17 1.73-1"></path>
+                  <path d="m17 3.34-1 1.73"></path>
+                  <path d="m11 13.73-4 6.93"></path>
+                </svg>
+              </div>
+              <h2 class="text-xl font-semibold text-gray-900">AI Query Assistant</h2>
+            </div>
             <div class="space-y-6">
               <!-- Upload Reference Document -->
               <div class="space-y-2">
@@ -503,7 +551,7 @@ Changes made:
             </div>
 
             <!-- Generated Query Display -->
-            <div v-if="generatedQuery" class="space-y-6">
+            <div v-if="generatedQuery" class="space-y-6 mt-6">
               <div class="rounded-md bg-gray-50 p-6">
                 <div class="flex items-start gap-4">
                   <div class="flex-1">
@@ -650,122 +698,154 @@ Changes made:
           </div>
 
           <!-- Schema Display -->
-          <div class="flex justify-between items-center">
-            <h1 class="text-2xl font-bold">Schema: {{ getDatabaseName() }}</h1>
-            <button
-              @click="disconnect"
-              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Disconnect
-            </button>
-          </div>
-
-          <div
-            v-for="table in schema"
-            :key="table.tableName"
-            class="bg-white rounded-lg shadow-lg overflow-hidden mb-6"
-          >
-            <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-              <h3 class="text-lg font-medium text-gray-900">{{ table.tableName }}</h3>
-            </div>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                  <tr>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Column
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Type
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Nullable
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Key
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Default
-                    </th>
-                    <th
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Extra
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="column in table.columns" :key="column.name">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {{ column.name }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ column.type }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ column.nullable }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ column.key }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ column.default }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ column.extra }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <div class="space-y-6">
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+              <div>
+                <h2 class="text-2xl font-bold text-gray-900">Database Schema</h2>
+                <p class="text-gray-500">{{ getDatabaseName() }}</p>
+              </div>
+              <button
+                @click="disconnect"
+                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                </svg>
+                Disconnect
+              </button>
             </div>
 
-            <!-- Sample Data Section -->
-            <div v-if="table.sampleData" class="px-4 py-3 bg-blue-50 border-t border-blue-200">
-              <div class="flex items-center gap-2 mb-2">
-                <h4 class="text-sm font-medium text-blue-800">Sample Data</h4>
-              </div>
-              <div class="overflow-x-auto bg-white rounded-md border border-blue-100">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-blue-50">
-                    <tr>
-                      <th
-                        v-for="(value, key) in table.sampleData"
-                        :key="key"
-                        class="px-4 py-2 text-left text-xs font-medium text-blue-700 uppercase tracking-wider"
+            <!-- Schema Tables -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div 
+                v-for="table in schema" 
+                :key="table.tableName"
+                class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
+              >
+                <!-- Table Header -->
+                <div 
+                  class="px-5 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center cursor-pointer"
+                  @click="table.expanded = !table.expanded"
+                >
+                  <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-lg bg-blue-50 text-blue-600">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M5 4a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2V8a2 2 0 00-2-2h-2.5l-1-1h-5l-1 1H5z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 class="text-lg font-medium text-gray-900">{{ table.tableName }}</h3>
+                      <p class="text-sm text-gray-500">{{ table.columns.length }} columns</p>
+                    </div>
+                  </div>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    class="h-5 w-5 text-gray-400 transition-transform duration-200" 
+                    :class="{'rotate-180': table.expanded}"
+                    viewBox="0 0 20 20" 
+                    fill="currentColor"
+                  >
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+
+                <!-- Table Content -->
+                <div v-show="table.expanded" class="divide-y divide-gray-200">
+                  <!-- Columns Table -->
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                      <thead class="bg-gray-50">
+                        <tr>
+                          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Column
+                          </th>
+                          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Type
+                          </th>
+                          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Key
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-for="column in table.columns" :key="column.name">
+                          <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ column.name }}
+                          </td>
+                          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                            {{ column.type }}
+                          </td>
+                          <td class="px-4 py-3 whitespace-nowrap text-sm">
+                            <span 
+                              v-if="column.key"
+                              class="px-2 py-1 text-xs rounded-full"
+                              :class="{
+                                'bg-green-100 text-green-800': column.key === 'PRI',
+                                'bg-blue-100 text-blue-800': column.key === 'MUL',
+                                'bg-purple-100 text-purple-800': column.key === 'UNI'
+                              }"
+                            >
+                              {{ column.key }}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <!-- Sample Data -->
+                  <div class="p-4">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                          <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                        </svg>
+                        Sample Data
+                      </h4>
+                      <button 
+                        v-if="table.sampleData"
+                        @click="table.showSample = !table.showSample"
+                        class="text-xs text-blue-600 hover:text-blue-800"
                       >
-                        {{ key }}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td
-                        v-for="(value, key) in table.sampleData"
-                        :key="key"
-                        class="px-4 py-2 text-sm text-gray-700 border-t border-gray-100"
-                      >
-                        {{ value === null ? 'NULL' : value }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                        {{ table.showSample ? 'Hide' : 'Show' }}
+                      </button>
+                    </div>
+                    
+                    <div v-if="table.sampleData && table.showSample" class="overflow-x-auto bg-gray-50 rounded-lg border border-gray-200">
+                      <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                          <tr>
+                            <th 
+                              v-for="(value, key) in table.sampleData"
+                              :key="key"
+                              class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100"
+                            >
+                              {{ key }}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                          <tr>
+                            <td 
+                              v-for="(value, key) in table.sampleData"
+                              :key="key"
+                              class="px-3 py-2 text-sm text-gray-700"
+                            >
+                              <span v-if="value === null" class="text-gray-400 italic">NULL</span>
+                              <span v-else class="font-mono text-xs">{{ value }}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div v-else-if="!table.sampleData" class="text-sm text-gray-400 italic">
+                      No sample data available
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div
-              v-else
-              class="px-4 py-3 bg-gray-100 border-t border-gray-200 text-sm text-gray-500 italic"
-            >
-              No sample data available for this table
             </div>
           </div>
         </div>
