@@ -21,6 +21,7 @@ declare module 'express-serve-static-core' {
 import path from 'path';
 import dotenv from 'dotenv';
 import { GeminiService } from './services/gemini.service';
+import { OpenAIService } from './services/openai.service';
 import winston from 'winston';
 import { extractTextFromFile } from './utils/document-processor'; // Utility for text extraction
 import fs from 'fs';
@@ -47,10 +48,17 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Initialize services
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is required in .env file');
+if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
+  throw new Error('Either GEMINI_API_KEY or OPENAI_API_KEY is required in .env file');
 }
-const geminiService = new GeminiService(process.env.GEMINI_API_KEY);
+let aiService;
+if (process.env.GEMINI_API_KEY) {
+  aiService = new GeminiService({apiKey: process.env.GEMINI_API_KEY});
+} else if (process.env.OPENAI_API_KEY) {
+  aiService = new OpenAIService({apiKey: process.env.OPENAI_API_KEY});
+} else {
+  throw new Error('Either GEMINI_API_KEY or OPENAI_API_KEY is required in .env file');
+}
 
 // Security and middleware configuration
 app.use(express.json({ limit: '50mb' }));
@@ -120,7 +128,7 @@ const handleQueryGeneration = async (
       throw new Error(`Invalid chart type: ${queryRequest.chartType}`);
     }
 
-    const queryResult = await geminiService.generateQuery(
+    const queryResult = await aiService.generateQuery(
       queryRequest.schema,
       queryRequest.question,
       queryRequest.error,

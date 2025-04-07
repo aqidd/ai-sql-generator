@@ -1,14 +1,11 @@
 /* eslint-disable max-lines-per-function */
 /**
- * Changes made:
- * 2025-03-16: Created Gemini service for SQL query generation
- * 2025-03-16: Fixed method binding and model configuration
- * 2025-03-31: Added chart generation support for pie, line, and bar charts
- * 2025-04-01: Refactored to use Vercel AI SDK
+ * OpenAI service for SQL query generation
+ * 2025-04-01: Created OpenAI service with functionality matching GeminiService
  * 2025-04-07: Fixed Vercel AI SDK implementation
  */
 
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import {
   responseSchema,
   generatePromptTemplate,
@@ -22,8 +19,8 @@ import {
   IQueryGenerationService,
 } from '../types/ai-services.types';
 
-export class GeminiService implements IQueryGenerationService {
-  private model: GoogleGenerativeAI;
+export class OpenAIService implements IQueryGenerationService {
+  private model: OpenAI;
   private readonly unsafePatterns = [
     /\bDROP\b/i,
     /\bTRUNCATE\b/i,
@@ -36,12 +33,13 @@ export class GeminiService implements IQueryGenerationService {
 
   constructor(options: AIServiceOptions) {
     const { apiKey, modelName, temperature, maxOutputTokens } = options;
-
-    // Use Google Generative AI SDK
-    this.model = new GoogleGenerativeAI(apiKey);
+    
+    this.model = new OpenAI({
+      apiKey,
+    });
     
     // Store model configuration for later use
-    this.modelName = modelName || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    this.modelName = modelName || process.env.OPENAI_MODEL || 'gpt-4-turbo';
     this.temperature = temperature || 0.1;
     this.maxOutputTokens = maxOutputTokens || 1024;
 
@@ -87,19 +85,14 @@ export class GeminiService implements IQueryGenerationService {
   private maxOutputTokens: number;
 
   private async generateContent(prompt: string): Promise<string> {
-    const genModel = this.model.getGenerativeModel({
+    const response = await this.model.chat.completions.create({
       model: this.modelName,
-      generationConfig: {
-        temperature: this.temperature,
-        maxOutputTokens: this.maxOutputTokens,
-      },
+      messages: [{ role: 'user', content: prompt }],
+      temperature: this.temperature,
+      max_tokens: this.maxOutputTokens,
     });
     
-    const result = await genModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    });
-    
-    return result.response.text();
+    return response.choices[0]?.message?.content || '';
   }
 
   private cleanResponse(response: string): string {
@@ -121,7 +114,7 @@ export class GeminiService implements IQueryGenerationService {
       typeof explanation === 'string';
 
     if (!isValid) {
-      throw new Error('Invalid response format from Gemini API');
+      throw new Error('Invalid response format from OpenAI API');
     }
 
     // Validate chart config if present
@@ -157,7 +150,7 @@ export class GeminiService implements IQueryGenerationService {
 
   private validateServiceState(): void {
     if (!this.model) {
-      throw new Error('Gemini service not properly initialized');
+      throw new Error('OpenAI service not properly initialized');
     }
   }
 
@@ -170,7 +163,7 @@ export class GeminiService implements IQueryGenerationService {
   ): Promise<QueryResult> {
     this.validateServiceState();
     this.validateInputs(schema, question);
-
+    
     try {
       const schemaInfo = schema.map(this.formatTableSchema).join('\n');
       const prompt = generatePromptTemplate(
