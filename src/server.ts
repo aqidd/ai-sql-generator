@@ -150,7 +150,6 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
 
     const dbService = new DatabaseService(config);
     try {
-      await dbService.testConnection();
       const results = await dbService.executeQuery(query);
       logger.info(`Query executed successfully: ${JSON.stringify(results)}`);
       res.json({ success: true, results: results });

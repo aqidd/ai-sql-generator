@@ -1,26 +1,7 @@
 import Knex from 'knex';
 import { Knex as KnexType } from 'knex';
-import { DatabaseConfig } from '../constants/server.constant';
 import { log } from 'console';
-
-export interface TableSchema {
-  tableName: string;
-  columns: ColumnInfo[];
-  sampleData?: Record<string, any>;
-}
-
-export interface ColumnInfo {
-  name: string;
-  type: string;
-  nullable: string;
-  defaultConstraintId?: number;
-  maxLength?: number;
-  precision?: number;
-  scale?: number;
-  key?: string;
-  default?: string;
-  extra?: string;
-}
+import { DatabaseConfig, ColumnInfo, TableSchema } from '../types/database';
 
 export class DatabaseService {
   private knex: KnexType;
@@ -47,14 +28,6 @@ export class DatabaseService {
         database: config.database,
       },
     };
-  }
-
-  public async testConnection(): Promise<void> {
-    try {
-      await this.knex.raw('SELECT 1');
-    } catch (error) {
-      throw new Error(`Failed to connect to database: ${(error as Error).message}`);
-    }
   }
 
   public async getTables(): Promise<string[]> {
@@ -163,7 +136,6 @@ export class DatabaseService {
   }
 
   public async processSchemaRequest(): Promise<TableSchema[]> {
-    await this.testConnection();
     const tables = await this.getTables();
     return await this.buildSchema(tables);
   }
