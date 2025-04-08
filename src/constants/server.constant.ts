@@ -168,7 +168,7 @@ export const getTableColumns = async (
           INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
           WHERE c.object_id = OBJECT_ID(${tableName}, 'U')
           ORDER BY c.column_id`;
-      log('result', result)
+      log('column result', result)
       return result.recordset as ColumnInfo[];
     } else {
       const [columns] = await pool.query<RowDataPacket[]>(
@@ -194,9 +194,14 @@ export const getTableColumns = async (
 export const getTables = async (pool: any, dbName: string): Promise<string[]> => {
   try {
     if (pool instanceof ConnectionPool) {
-      const result = await pool.query`SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'`;
-      const resp = result.recordset.map((t: any) => t.TABLE_NAME);
-      log('result', resp);
+      const result = await pool.query`
+        SELECT 
+          SCHEMA_NAME(schema_id) + '.' + name as TableName
+        FROM sys.tables
+        ORDER BY schema_id, name
+      `;
+      const resp = result.recordset.map((t: any) => t.TableName);
+      log('table result', resp);
       return resp;
     } else {
       const [tables] = await pool.query<RowDataPacket[]>(
@@ -217,7 +222,8 @@ export const getSampleData = async (
 ): Promise<Record<string, any> | undefined> => {
   try {
     if (pool instanceof ConnectionPool) {
-      const result = await pool.query(`SELECT TOP 1 * FROM [${tableName}]`);
+      const [schema, table] = tableName.split('.');
+      const result = await pool.query(`SELECT TOP 1 * FROM [${schema}].[${table}]`);
       const sampleRows = result.recordset;
       return sampleRows.length > 0 ? sampleRows[0] : undefined;
     } else {
