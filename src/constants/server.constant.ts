@@ -176,8 +176,8 @@ export const getTableColumns = async (
           COLUMN_NAME as name,
           COLUMN_TYPE as type,
           IS_NULLABLE as nullable,
-          COLUMN_KEY as key,
-          COLUMN_DEFAULT as default,
+          COLUMN_KEY as \`key\`,
+          COLUMN_DEFAULT as \`default\`,
           EXTRA as extra
         FROM information_schema.COLUMNS 
         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
