@@ -30,14 +30,13 @@ import { OpenAIService } from './services/openai.service';
 import winston from 'winston';
 import { extractTextFromFile } from './utils/document-processor'; // Utility for text extraction
 import fs from 'fs';
+import { DatabaseService } from './services/db.service';
 
 import {
   handleDatabaseError,
-  processSchemaRequest,
   validateQueryRequest,
   validateQuerySafety,
   validateDatabaseConfig,
-  createDatabasePool,
 } from './constants/server.constant';
 import { log } from 'console';
 
@@ -91,9 +90,15 @@ const handleSchemaRequest = async (req: express.Request, res: express.Response):
       config = getDummyConfig();
     }
 
-    const schema = await processSchemaRequest(config);
-    res.json({ schema });
+    const dbService = new DatabaseService(config);
+    try {
+      const schema = await dbService.processSchemaRequest();
+      res.json({ schema });
+    } finally {
+      await dbService.destroy();
+    }
   } catch (error) {
+    logger.error(JSON.stringify(error));
     handleDatabaseError(error as Error, res);
   }
 };
@@ -143,24 +148,18 @@ const handleQueryGeneration = async (
 app.post('/api/generate-query', handleQueryGeneration);
 
 const handleQueryExecution = async (req: express.Request, res: express.Response): Promise<void> => {
-  let pool;
   try {
-    // eslint-disable-next-line prefer-const
     let { config, query, isUnsafe } = req.body as ExecuteQueryRequest;
-
-    if (req.body.useDummyDB) {
+    if(req.body.useDummyDB) {
       config = getDummyConfig();
     }
-    
-    config.dbType = process.env.DB_TYPE as DatabaseType || 'mysql';
     validateDatabaseConfig(config);
     validateQuerySafety(isUnsafe);
 
-    let pool: any; // Using any since we're handling both MySQL and MSSQL
+    const dbService = new DatabaseService(config);
     try {
-      pool = await createDatabasePool(config);
-      await testConnection(pool);
-      const results = await executeQuery(pool, query);
+      await dbService.testConnection();
+      const results = await dbService.executeQuery(query);
       logger.info(`Query executed successfully: ${JSON.stringify(results)}`);
       res.json({ success: true, results: results });
     } catch (error: unknown) {
@@ -169,13 +168,7 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
       );
       handleQueryError(error, res);
     } finally {
-      if (pool) {
-        if (pool instanceof ConnectionPool) {
-          await pool.close();
-        } else {
-          await pool.end();
-        }
-      }
+      await dbService.destroy();
     }
   } catch (error: unknown) {
     logger.error(
@@ -185,15 +178,7 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
   }
 };
 
-const executeQuery = async (pool: any, query: string): Promise<any[]> => {
-  if (pool instanceof ConnectionPool) {
-    const result = await pool.query(query);
-    return result.recordset || [];
-  } else {
-    const [rows] = await pool.query(query);
-    return rows || [];
-  }
-};
+app.post('/api/execute-query', handleQueryExecution);
 
 const handleQueryError = (queryError: unknown, res: express.Response): void => {
   res.status(500).json({
@@ -201,8 +186,6 @@ const handleQueryError = (queryError: unknown, res: express.Response): void => {
     error: queryError instanceof Error ? queryError.message : 'Unknown error',
   });
 };
-
-app.post('/api/execute-query', handleQueryExecution);
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -254,8 +237,13 @@ app.get('/api/test-dummy-db', async (_req, res) => {
   try {
     const config: DatabaseConfig = getDummyConfig();
 
-    const schema = await processSchemaRequest(config);
-    res.json({ schema });
+    const dbService = new DatabaseService(config);
+    try {
+      const schema = await dbService.processSchemaRequest();
+      res.json({ schema });
+    } finally {
+      await dbService.destroy();
+    }
   } catch (error) {
     logger.info(JSON.stringify(error));
     handleDatabaseError(error as Error, res);
