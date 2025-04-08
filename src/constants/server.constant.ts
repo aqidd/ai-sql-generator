@@ -1,13 +1,28 @@
-import { createPool, RowDataPacket } from 'mysql2/promise';
-import { Pool, PoolOptions } from 'mysql2/promise';
+import { createPool, RowDataPacket, PoolOptions } from 'mysql2/promise';
+import { ConnectionPool } from 'mssql';
 import express from 'express';
+import { log } from 'console';
+
+// Database types
+export type DatabaseType = 'mysql' | 'mssql';
 
 // Interfaces
 export type DatabaseConfig = StandardConfig | ConnectionStringConfig;
 
 export interface ConnectionStringConfig {
   type: 'connection-string';
+  dbType: DatabaseType;
   url: string;
+}
+
+export interface StandardConfig {
+  type: 'standard';
+  dbType: DatabaseType;
+  host: string;
+  port?: number;
+  user: string;
+  password: string;
+  database: string;
 }
 
 export interface QueryRequest {
@@ -24,15 +39,6 @@ export interface ExecuteQueryRequest {
   isUnsafe: boolean;
 }
 
-interface StandardConfig {
-  type: 'standard';
-  host: string;
-  port?: number;
-  user: string;
-  password: string;
-  database: string;
-}
-
 interface TableSchema {
   tableName: string;
   columns: ColumnInfo[];
@@ -43,54 +49,185 @@ interface ColumnInfo {
   name: string;
   type: string;
   nullable: string;
-  key: string;
-  default: string | null;
-  extra: string;
+  key?: string;
+  default?: string;
+  extra?: string;
 }
 
-// Arrow functions
-const createBasePoolConfig = (): PoolOptions => ({
-  connectTimeout: 10000,
-  waitForConnections: true,
+// Base pool configuration
+const baseConfig: PoolOptions = {
   connectionLimit: 10,
-  maxIdle: 10,
-  idleTimeout: 60000,
   queueLimit: 0,
-});
-
-const createConnectionStringPool = (url: string): Pool => {
-  return createPool(url);
 };
 
-const createStandardPool = (config: StandardConfig, baseConfig: PoolOptions): Pool => {
-  const poolConfig: PoolOptions = {
-    ...baseConfig,
-    host: config.host,
-    port: config.port || 3306,
-    user: config.user,
-    password: config.password,
-    database: config.database,
-  };
-  return createPool(poolConfig);
+const createConnectionStringPool = (url: string, dbType: DatabaseType): any => {
+  if (dbType === 'mysql') {
+    return createPool(url);
+  } else if (dbType === 'mssql') {
+    return new ConnectionPool(url);
+  } else {
+    throw new Error('Unsupported database type');
+  }
 };
 
-const createDatabasePool = (config: DatabaseConfig): Pool => {
-  const baseConfig = createBasePoolConfig();
+const createStandardPool = (config: StandardConfig, baseConfig: PoolOptions): any => {
+  if (config.dbType === 'mysql') {
+    const poolConfig = {
+      ...baseConfig,
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database,
+    };
+    return createPool(poolConfig);
+  } else if (config.dbType === 'mssql') {
+    const mssqlConfig = {
+      user: config.user,
+      password: config.password,
+      server: config.host,
+      port: config.port,
+      database: config.database,
+      options: {
+        trustServerCertificate: true,
+      },
+    };
+    return new ConnectionPool(mssqlConfig);
+  } else {
+    throw new Error('Unsupported database type');
+  }
+};
 
-  if (config.type === 'connection-string') {
-    return createConnectionStringPool(config.url);
+export const createDatabasePool = async (config: DatabaseConfig): Promise<any> => {
+  if (!config) {
+    throw new Error('Database configuration is required');
   }
 
-  return createStandardPool(config, baseConfig);
+  let pool: any;
+
+  if (config.type === 'connection-string') {
+    pool = createConnectionStringPool(config.url, config.dbType);
+  } else {
+    pool = createStandardPool(config, baseConfig);
+  }
+
+  // Connect to the pool
+  if (pool instanceof ConnectionPool) {
+    await pool.connect();
+  }
+
+  return pool;
 };
 
-const testConnection = async (pool: Pool): Promise<void> => {
+export const testConnection = async (pool: any): Promise<void> => {
   try {
-    const connection = await pool.getConnection();
-    await connection.release();
+    if (pool instanceof ConnectionPool) {
+      await pool.query('SELECT 1');
+    } else {
+      const connection = await pool.getConnection();
+      await connection.query('SELECT 1');
+      await connection.release();
+    }
   } catch (error) {
-    await pool.end();
+    if (pool instanceof ConnectionPool) {
+      await pool.close();
+    } else {
+      await pool.end();
+    }
     throw new Error(`Failed to connect to database: ${(error as Error).message}`);
+  }
+};
+
+export const executeQuery = async (pool: any, query: string): Promise<any> => {
+  if (pool instanceof ConnectionPool) {
+    const result = await pool.query(query);
+    return result.recordset;
+  } else {
+    const [rows] = await pool.query(query);
+    return rows;
+  }
+};
+
+export const getTableColumns = async (
+  pool: any,
+  dbName: string,
+  tableName: string
+): Promise<ColumnInfo[]> => {
+  try {
+    if (pool instanceof ConnectionPool) {
+      const result = await pool.query`
+          SELECT 
+            c.name as name,
+            t.name as type,
+            c.is_nullable as nullable,
+            c.default_object_id as defaultConstraintId,
+            c.max_length as maxLength,
+            c.precision as precision,
+            c.scale as scale
+          FROM sys.columns c
+          INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+          WHERE c.object_id = OBJECT_ID(${tableName}, 'U')
+          ORDER BY c.column_id`;
+      log('result', result)
+      return result.recordset as ColumnInfo[];
+    } else {
+      const [columns] = await pool.query<RowDataPacket[]>(
+        `SELECT 
+          COLUMN_NAME as name,
+          COLUMN_TYPE as type,
+          IS_NULLABLE as nullable,
+          COLUMN_KEY as key,
+          COLUMN_DEFAULT as default,
+          EXTRA as extra
+        FROM information_schema.COLUMNS 
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+        [dbName, tableName]
+      );
+      return columns as ColumnInfo[];
+    }
+  } catch (error) {
+    console.error(`Error getting columns for ${tableName}:`, error);
+    return [];
+  }
+};
+
+export const getTables = async (pool: any, dbName: string): Promise<string[]> => {
+  try {
+    if (pool instanceof ConnectionPool) {
+      const result = await pool.query`SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'`;
+      const resp = result.recordset.map((t: any) => t.TABLE_NAME);
+      log('result', resp);
+      return resp;
+    } else {
+      const [tables] = await pool.query<RowDataPacket[]>(
+        'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?',
+        [dbName]
+      );
+      return tables.map((t: RowDataPacket) => t.TABLE_NAME);
+    }
+  } catch (error) {
+    console.error(`Error getting tables:`, error);
+    return [];
+  }
+};
+
+export const getSampleData = async (
+  pool: any,
+  tableName: string
+): Promise<Record<string, any> | undefined> => {
+  try {
+    if (pool instanceof ConnectionPool) {
+      const result = await pool.query(`SELECT TOP 1 * FROM [${tableName}]`);
+      const sampleRows = result.recordset;
+      return sampleRows.length > 0 ? sampleRows[0] : undefined;
+    } else {
+      const [rows] = await pool.query<RowDataPacket[]>(`SELECT * FROM ${tableName} LIMIT 1`);
+      const sampleRows = rows as RowDataPacket[];
+      return sampleRows.length > 0 ? sampleRows[0] : undefined;
+    }
+  } catch (error) {
+    console.error(`Error fetching sample data from ${tableName}:`, error);
+    return undefined;
   }
 };
 
@@ -100,60 +237,40 @@ const getDatabaseName = (config: DatabaseConfig): string => {
     : config.database;
 };
 
-const getTableColumns = async (
-  pool: Pool,
-  dbName: string,
-  tableName: string
-): Promise<ColumnInfo[]> => {
-  const [columns] = await pool.query<RowDataPacket[]>(
-    `SELECT 
-      COLUMN_NAME as name,
-      COLUMN_TYPE as type,
-      IS_NULLABLE as nullable,
-      COLUMN_KEY as \`key\`,
-      COLUMN_DEFAULT as \`default\`,
-      EXTRA as extra
-    FROM information_schema.COLUMNS 
-    WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
-    [dbName, tableName]
-  );
-  return columns as ColumnInfo[];
-};
-
-const getTables = async (pool: Pool, dbName: string): Promise<string[]> => {
-  const [tables] = await pool.query<RowDataPacket[]>(
-    'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?',
-    [dbName]
-  );
-  return tables.map((t: RowDataPacket) => t.TABLE_NAME);
-};
-
-const getSampleData = async (
-  pool: Pool,
-  tableName: string
-): Promise<Record<string, any> | undefined> => {
-  try {
-    const [rows] = await pool.query(`SELECT * FROM ${tableName} LIMIT 1`);
-    const sampleRows = rows as RowDataPacket[];
-    return sampleRows.length > 0 ? sampleRows[0] : undefined;
-  } catch (error) {
-    console.error(`Error fetching sample data from ${tableName}:`, error);
-    return undefined;
-  }
-};
-
 const buildSchema = async (
-  pool: Pool,
+  pool: any,
   dbName: string,
   tables: string[]
 ): Promise<TableSchema[]> => {
   const schema: TableSchema[] = [];
-  for (const tableName of tables) {
-    const columns = await getTableColumns(pool, dbName, tableName);
-    const sampleData = await getSampleData(pool, tableName);
-    schema.push({ tableName, columns, sampleData });
+
+  for (const table of tables) {
+    log(dbName, table)
+    const columns = await getTableColumns(pool, dbName, table);
+    log('columns', columns);
+    const sampleData = await getSampleData(pool, table);
+    log('sampleData', sampleData);
+    schema.push({ tableName: table, columns, sampleData });
   }
+
   return schema;
+};
+
+export const processSchemaRequest = async (config: DatabaseConfig): Promise<TableSchema[]> => {
+  const pool = await createDatabasePool(config);
+  try {
+    await testConnection(pool);
+    const dbName = getDatabaseName(config);
+    const tables = await getTables(pool, dbName);
+    const schema = await buildSchema(pool, dbName, tables);
+    return schema;
+  } finally {
+    if (pool instanceof ConnectionPool) {
+      await pool.close();
+    } else {
+      await pool.end();
+    }
+  }
 };
 
 export const handleDatabaseError = (error: Error, res: express.Response): void => {
@@ -168,19 +285,6 @@ export const handleDatabaseError = (error: Error, res: express.Response): void =
     res.status(404).json({ error: 'Database not found. Check database name.' });
   } else {
     res.status(500).json({ error: errorMessage });
-  }
-};
-
-export const processSchemaRequest = async (config: DatabaseConfig): Promise<TableSchema[]> => {
-  const pool = createDatabasePool(config);
-  try {
-    await testConnection(pool);
-    const dbName = getDatabaseName(config);
-    const tables = await getTables(pool, dbName);
-    const schema = await buildSchema(pool, dbName, tables);
-    return schema;
-  } finally {
-    await pool.end();
   }
 };
 
@@ -216,8 +320,8 @@ export const validateDatabaseConfig = (config: DatabaseConfig): void => {
   }
 };
 
-export const initializeDatabasePool = async (config: DatabaseConfig): Promise<Pool> => {
-  const pool = createDatabasePool(config);
+export const initializeDatabasePool = async (config: DatabaseConfig): Promise<any> => {
+  const pool = await createDatabasePool(config);
   await testConnection(pool);
   return pool;
 };

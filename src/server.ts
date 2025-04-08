@@ -8,9 +8,14 @@
  */
 
 import express from 'express';
+import cors from 'cors';
+import multer from 'multer';
+
+import { DatabaseConfig, ExecuteQueryRequest, DatabaseType, ConnectionStringConfig, testConnection, QueryRequest } from './constants/server.constant';
+
+import { ConnectionPool } from 'mssql';
 
 // Extend the Request interface to include the 'file' property
-import multer from 'multer';
 type MulterFile = Express.Multer.File;
 
 declare module 'express-serve-static-core' {
@@ -32,15 +37,9 @@ import {
   validateQueryRequest,
   validateQuerySafety,
   validateDatabaseConfig,
-  initializeDatabasePool,
+  createDatabasePool,
 } from './constants/server.constant';
-
-import type {
-  DatabaseConfig,
-  ConnectionStringConfig,
-  QueryRequest,
-  ExecuteQueryRequest,
-} from './constants/server.constant';
+import { log } from 'console';
 
 dotenv.config();
 
@@ -64,6 +63,7 @@ if (process.env.GEMINI_API_KEY) {
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public'));
+app.use(cors());
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -85,11 +85,13 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 const handleSchemaRequest = async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     let config = req.body as DatabaseConfig;
+    config.dbType = process.env.DB_TYPE as DatabaseType || 'mysql';
 
     // Use DB_TEST connection string if useDummyDB is true
     if (req.body.useDummyDB && process.env.DB_TEST) {
       config = {
         type: 'connection-string',
+        dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
         url: process.env.DB_TEST,
       };
     }
@@ -102,7 +104,7 @@ const handleSchemaRequest = async (req: express.Request, res: express.Response):
 };
 
 app.post('/api/schema', handleSchemaRequest);
-
+  
 const handleQueryGeneration = async (
   req: express.Request,
   res: express.Response
@@ -155,23 +157,51 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
     if (req.body.useDummyDB && process.env.DB_TEST) {
       config = {
         type: 'connection-string',
+        dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
         url: process.env.DB_TEST,
       };
     }
+    
+    config.dbType = process.env.DB_TYPE as DatabaseType || 'mysql';
     validateDatabaseConfig(config);
     validateQuerySafety(isUnsafe);
 
-    pool = await initializeDatabasePool(config);
-    const results = await pool.query(query);
-    logger.info(`Query executed successfully: ${JSON.stringify(results)}`);
-    res.json({ success: true, results: results[0] });
+    let pool: any; // Using any since we're handling both MySQL and MSSQL
+    try {
+      pool = await createDatabasePool(config);
+      await testConnection(pool);
+      const results = await executeQuery(pool, query);
+      logger.info(`Query executed successfully: ${JSON.stringify(results)}`);
+      res.json({ success: true, results: results });
+    } catch (error: unknown) {
+      logger.error(
+        `Query execution error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      handleQueryError(error, res);
+    } finally {
+      if (pool) {
+        if (pool instanceof ConnectionPool) {
+          await pool.close();
+        } else {
+          await pool.end();
+        }
+      }
+    }
   } catch (error: unknown) {
     logger.error(
       `Query execution error: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
     handleQueryError(error, res);
-  } finally {
-    if (pool) await pool.end();
+  }
+};
+
+const executeQuery = async (pool: any, query: string): Promise<any[]> => {
+  if (pool instanceof ConnectionPool) {
+    const result = await pool.query(query);
+    return result.recordset || [];
+  } else {
+    const [rows] = await pool.query(query);
+    return rows || [];
   }
 };
 
@@ -239,6 +269,7 @@ app.get('/api/test-dummy-db', async (_req, res) => {
 
     const config: ConnectionStringConfig = {
       type: 'connection-string',
+      dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
       url: connectionString,
     };
 
