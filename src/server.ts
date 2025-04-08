@@ -87,13 +87,8 @@ const handleSchemaRequest = async (req: express.Request, res: express.Response):
     let config = req.body as DatabaseConfig;
     config.dbType = process.env.DB_TYPE as DatabaseType || 'mysql';
 
-    // Use DB_TEST connection string if useDummyDB is true
-    if (req.body.useDummyDB && process.env.DB_TEST) {
-      config = {
-        type: 'connection-string',
-        dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
-        url: process.env.DB_TEST,
-      };
+    if (req.body.useDummyDB) {
+      config = getDummyConfig();
     }
 
     const schema = await processSchemaRequest(config);
@@ -153,13 +148,8 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
     // eslint-disable-next-line prefer-const
     let { config, query, isUnsafe } = req.body as ExecuteQueryRequest;
 
-    // Use DB_TEST connection string if useDummyDB is true
-    if (req.body.useDummyDB && process.env.DB_TEST) {
-      config = {
-        type: 'connection-string',
-        dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
-        url: process.env.DB_TEST,
-      };
+    if (req.body.useDummyDB) {
+      config = getDummyConfig();
     }
     
     config.dbType = process.env.DB_TYPE as DatabaseType || 'mysql';
@@ -262,16 +252,7 @@ app.post('/api/upload-document', upload.single('file'), async (req, res) => {
 
 app.get('/api/test-dummy-db', async (_req, res) => {
   try {
-    const connectionString = process.env.DB_TEST;
-    if (!connectionString) {
-      return res.status(400).json({ error: 'DB_TEST environment variable is not set' });
-    }
-
-    const config: ConnectionStringConfig = {
-      type: 'connection-string',
-      dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
-      url: connectionString,
-    };
+    const config: DatabaseConfig = getDummyConfig();
 
     const schema = await processSchemaRequest(config);
     res.json({ schema });
@@ -280,6 +261,27 @@ app.get('/api/test-dummy-db', async (_req, res) => {
     handleDatabaseError(error as Error, res);
   }
 });
+
+const getDummyConfig = (): DatabaseConfig => {
+  if (process.env.DB_CS) {
+    return {
+      type: 'connection-string',
+      dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
+      url: process.env.DB_CS,
+    };
+  } else if (process.env.DB_PASSWORD) {
+    return {
+      type: 'standard',
+      dbType: process.env.DB_TYPE as DatabaseType || 'mysql',
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'test',
+    };
+  } else {
+    throw new Error('DB DUMMY environment variable is not set');
+  }
+};
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
