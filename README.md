@@ -139,6 +139,13 @@ npm run dev
 - Input validation and SQL injection prevention
 - Environment-based configuration
 
+## Testing With MSSQL (Mac OS)
+
+brew install sqlcmd
+brew install --cask azure-data-studio
+sqlcmd create mssql --accept-eula  --password-length 5 --using https://aka.ms/AdventureWorksLT.bak
+
+
 ## 🤝 Contributing
 
 1. Fork the repository
