@@ -209,7 +209,7 @@ export const generatePromptTemplate = (
 ): string => {
   const rules = getPromptRules(chartType);
 
-  return `You are a Data Analyst with MySQL expertise.
+  return `You are a Data Analyst with SQL expertise.
   Given the following database schema and user question, 
   generate an SQL query that answers user's question. 
   SQL must return data from database provided.
