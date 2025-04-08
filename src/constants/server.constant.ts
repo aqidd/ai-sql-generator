@@ -1,54 +1,5 @@
-
 import express from 'express';
-
-
-// Interfaces
-export type DatabaseConfig = StandardConfig | ConnectionStringConfig;
-
-export interface ConnectionStringConfig {
-  type: 'connection-string';
-  dbType: DatabaseType;
-  url: string;
-}
-
-export interface StandardConfig {
-  type: 'standard';
-  dbType: DatabaseType;
-  host: string;
-  port?: number;
-  user: string;
-  password: string;
-  database: string;
-}
-
-export interface QueryRequest {
-  error: string | undefined;
-  schema: TableSchema[];
-  question: string;
-  referenceText?: string;
-  chartType?: string | undefined;
-}
-
-export interface ExecuteQueryRequest {
-  config: DatabaseConfig;
-  query: string;
-  isUnsafe: boolean;
-}
-
-interface TableSchema {
-  tableName: string;
-  columns: ColumnInfo[];
-  sampleData?: Record<string, any>;
-}
-
-interface ColumnInfo {
-  name: string;
-  type: string;
-  nullable: string;
-  key?: string;
-  default?: string;
-  extra?: string;
-}
+import { DatabaseConfig, QueryRequest} from '../types/database';
 
 export const handleDatabaseError = (error: Error, res: express.Response): void => {
   const errorMessage = error.message;

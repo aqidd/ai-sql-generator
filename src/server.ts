@@ -10,10 +10,22 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-
-import { DatabaseConfig, ExecuteQueryRequest, DatabaseType, ConnectionStringConfig, testConnection, QueryRequest } from './constants/server.constant';
-
-import { ConnectionPool } from 'mssql';
+import path from 'path';
+import dotenv from 'dotenv';
+import { GeminiService } from './services/gemini.service';
+import { OpenAIService } from './services/openai.service';
+import winston from 'winston';
+import { extractTextFromFile } from './utils/document-processor'; // Utility for text extraction
+import fs from 'fs';
+import { DatabaseService } from './services/db.service';
+import {
+  handleDatabaseError,
+  validateQueryRequest,
+  validateQuerySafety,
+  validateDatabaseConfig,
+} from './constants/server.constant';
+import { log } from 'console';
+import { DatabaseConfig, DatabaseType, ExecuteQueryRequest, QueryRequest } from './types/database';
 
 // Extend the Request interface to include the 'file' property
 type MulterFile = Express.Multer.File;
@@ -23,40 +35,11 @@ declare module 'express-serve-static-core' {
     file?: MulterFile;
   }
 }
-import path from 'path';
-import dotenv from 'dotenv';
-import { GeminiService } from './services/gemini.service';
-import { OpenAIService } from './services/openai.service';
-import winston from 'winston';
-import { extractTextFromFile } from './utils/document-processor'; // Utility for text extraction
-import fs from 'fs';
-import { DatabaseService } from './services/db.service';
-
-import {
-  handleDatabaseError,
-  validateQueryRequest,
-  validateQuerySafety,
-  validateDatabaseConfig,
-} from './constants/server.constant';
-import { log } from 'console';
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-
-// Initialize services
-if (!process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY) {
-  throw new Error('Either GEMINI_API_KEY or OPENAI_API_KEY is required in .env file');
-}
-let aiService;
-if (process.env.GEMINI_API_KEY) {
-  aiService = new GeminiService({apiKey: process.env.GEMINI_API_KEY});
-} else if (process.env.OPENAI_API_KEY) {
-  aiService = new OpenAIService({apiKey: process.env.OPENAI_API_KEY});
-} else {
-  throw new Error('Either GEMINI_API_KEY or OPENAI_API_KEY is required in .env file');
-}
 
 // Security and middleware configuration
 app.use(express.json({ limit: '50mb' }));
@@ -110,6 +93,15 @@ const handleQueryGeneration = async (
   res: express.Response
 ): Promise<void> => {
   try {
+    let aiService;
+    if (process.env.GEMINI_API_KEY) {
+      aiService = new GeminiService({apiKey: process.env.GEMINI_API_KEY});
+    } else if (process.env.OPENAI_API_KEY) {
+      aiService = new OpenAIService({apiKey: process.env.OPENAI_API_KEY});
+    } else {
+      throw new Error('Either GEMINI_API_KEY or OPENAI_API_KEY is required in .env file');
+    }
+
     const queryRequest = req.body as QueryRequest;
     validateQueryRequest(queryRequest);
 
@@ -180,12 +172,6 @@ const handleQueryExecution = async (req: express.Request, res: express.Response)
 
 app.post('/api/execute-query', handleQueryExecution);
 
-const handleQueryError = (queryError: unknown, res: express.Response): void => {
-  res.status(500).json({
-    success: false,
-    error: queryError instanceof Error ? queryError.message : 'Unknown error',
-  });
-};
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -270,6 +256,13 @@ const getDummyConfig = (): DatabaseConfig => {
   } else {
     throw new Error('DB DUMMY environment variable is not set');
   }
+};
+
+const handleQueryError = (queryError: unknown, res: express.Response): void => {
+  res.status(500).json({
+    success: false,
+    error: queryError instanceof Error ? queryError.message : 'Unknown error',
+  });
 };
 
 app.get('/', (_req, res) => {
